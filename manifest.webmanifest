@@ -1,0 +1,16 @@
+{
+  "name": "Hilal Fırça İş Takip",
+  "short_name": "İş Takip",
+  "description": "Sipariş ve duruş kaydı; internet olmadan da çalışır.",
+  "lang": "tr",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#eef2f0",
+  "theme_color": "#0d6b57",
+  "icons": [
+    { "src": "ikon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "ikon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
