@@ -332,7 +332,8 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
     uyari: { 'TEMİZLİK': 30, 'AYAR': 120, 'ARIZA': 120, 'MALZEME BEKLEME': 60, 'BOŞTA / SİPARİŞ YOK': 240, 'KİŞİSEL İHTİYAÇ': 30, 'GEÇ AÇILIŞ': 30,
       'PROGRAM / ÇİZİM': 150, 'TEL / SARF DEĞİŞİMİ': 60, 'ELEKTRİK / KOMPRESÖR': 60, 'BAKIM': 180, 'TOPLANTI': 60, 'OPERATÖR YOK': 240, 'MAKİNE KAPALI': 480, 'DİĞER': 60 },
     esik: 10,
-    vardiya: { basla: '08:00', bitis: '18:00', molalar: [['10:00', '10:15'], ['12:30', '13:00'], ['15:30', '15:45']] }
+    vardiya: { basla: '08:00', bitis: '18:00', molalar: [['10:15', '10:30'], ['12:00', '12:35'], ['15:45', '16:00']],
+      temizlik: { diger: [['17:45', '18:00']], cuma: [['17:30', '18:00']] } }
   };
 
   /* ---------- Yerel kayıt ---------- */
@@ -369,13 +370,15 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
     return ev;
   }
 
-  /** bas–bit arası dakika, molalar düşülerek (sunucuyla aynı kural). */
+  /** O günün düşülecek aralıkları: molalar + standart temizlik (Cuma ayrı). */
+  const gunMolalari = g => { const t = vd().temizlik || {}; return (vd().molalar || []).concat((new Date(g).getDay() === 5 ? t.cuma : t.diger) || []); };
+  /** bas–bit arası dakika, molalar ve standart temizlik düşülerek (sunucuyla aynı kural). */
   function molaHaric(bas, bit) {
     bas = new Date(bas); bit = new Date(bit);
     let ms = bit - bas;
     if (ms <= 0) return 0;
     for (let g = new Date(bas.getFullYear(), bas.getMonth(), bas.getDate()); g <= bit; g.setDate(g.getDate() + 1)) {
-      (vd().molalar || []).forEach(m => {
+      gunMolalari(g).forEach(m => {
         const ust = Math.min(bit, saatte(g, m[1])), alt = Math.max(bas, saatte(g, m[0]));
         if (ust > alt) ms -= ust - alt;
       });
