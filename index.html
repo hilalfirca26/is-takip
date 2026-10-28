@@ -217,12 +217,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
   <section id="ekBaslat" hidden>
     <div><h1>Sipariş başlat</h1><p class="sub" id="bAlt"></p></div>
     <div class="alan"><label for="sNo">Sipariş No<i>*</i></label><input id="sNo" autocomplete="off"></div>
-    <div class="uc" id="sCnc">
-      <div class="alan"><label for="sDelik">Delik Sayısı<i>*</i></label><input id="sDelik" inputmode="numeric" autocomplete="off"></div>
-      <div class="alan"><label for="sYatay">Yatay mesafe (mm)</label><input id="sYatay" inputmode="decimal" autocomplete="off"></div>
-      <div class="alan"><label for="sDikey">Dikey mesafe (mm)</label><input id="sDikey" inputmode="decimal" autocomplete="off"></div>
-    </div>
-    <p class="sub" id="bSureNot">Süre “Siparişi Başlat”a bastığınız anda başlar. Adet ve fireyi işi bitirince gireceksiniz.</p>
+    <p class="sub" id="bSureNot">Süre “Siparişi Başlat”a bastığınız anda başlar. Adet, fire ve delik bilgilerini işi bitirince gireceksiniz.</p>
     <p class="hata" id="bHata" hidden></p>
   </section>
 
@@ -236,6 +231,11 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
     <div class="iki">
       <div class="alan"><label for="kpAdet">Üretim Adedi<i>*</i></label><input id="kpAdet" inputmode="numeric" autocomplete="off"></div>
       <div class="alan"><label for="kpFire">Hatalı / Fire</label><input id="kpFire" inputmode="numeric" autocomplete="off" placeholder="0"></div>
+    </div>
+    <div class="uc" id="sCnc">
+      <div class="alan"><label for="sDelik">Delik Sayısı<i>*</i></label><input id="sDelik" inputmode="numeric" autocomplete="off"></div>
+      <div class="alan"><label for="sYatay">Yatay mesafe (mm)</label><input id="sYatay" inputmode="decimal" autocomplete="off"></div>
+      <div class="alan"><label for="sDikey">Dikey mesafe (mm)</label><input id="sDikey" inputmode="decimal" autocomplete="off"></div>
     </div>
     <div class="alan">
       <span class="etiket" id="kpSonucEt">Sipariş bitti mi?<i>*</i></span>
@@ -629,25 +629,27 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
   }
 
   /* ---------- Sipariş başlat ---------- */
-  const bAlan = ['sNo', 'sDelik', 'sYatay', 'sDikey'];
+  const bAlan = ['sNo'], cncAlan = ['sDelik', 'sYatay', 'sDikey'];
+  const cncMi = () => { const b = AYAR.bolumler.find(x => x.ad === kimlik.bolum); return !!(b && b.cnc); };
   $('bSipBaslat').addEventListener('click', () => { if (bosluk()) return boslukAc('siparis'); siparisFormu(); });
   let sipGeri = null, sipGeriNot = '';
   /** geri: kayıt yokken üretim yapıldıysa siparişin geriye alınmış başlangıcı. */
   function siparisFormu(geri, not) {
     sipGeri = geri || null; sipGeriNot = not || '';
     bAlan.forEach(id => { $(id).value = ''; $(id).classList.remove('hatali'); });
-    const b = AYAR.bolumler.find(x => x.ad === kimlik.bolum);
-    $('sCnc').hidden = !(b && b.cnc);
     $('bAlt').textContent = etiket();
-    $('bSureNot').textContent = sipGeri ? 'Başlangıç ' + saatYaz(sipGeri) + ' olarak kaydedilecek (kayıt yokken üretim yapıldı). Adet ve fireyi işi bitirince gireceksiniz.'
-      : 'Süre “Siparişi Başlat”a bastığınız anda başlar. Adet ve fireyi işi bitirince gireceksiniz.';
+    $('bSureNot').textContent = sipGeri ? 'Başlangıç ' + saatYaz(sipGeri) + ' olarak kaydedilecek (kayıt yokken üretim yapıldı). Adet, fire ve delik bilgilerini işi bitirince gireceksiniz.'
+      : 'Süre “Siparişi Başlat”a bastığınız anda başlar. Adet, fire ve delik bilgilerini işi bitirince gireceksiniz.';
     hata('bHata', ''); goster('ekBaslat'); $('sNo').focus();
   }
 
   /* ---------- Sipariş kapat ---------- */
   $('bSipKapat').addEventListener('click', () => {
     const s = K().siparis; if (!s) return;
-    ['kpAdet', 'kpFire', 'kpNot', 'kpBitis'].forEach(id => { $(id).value = ''; $(id).classList.remove('hatali'); });
+    ['kpAdet', 'kpFire', 'kpNot', 'kpBitis'].concat(cncAlan).forEach(id => { $(id).value = ''; $(id).classList.remove('hatali'); });
+    $('sCnc').hidden = !cncMi();
+    // Eski sürümde başlangıçta girilmiş delik bilgisi varsa doldur
+    if (s.delik !== '' && s.delik != null) { $('sDelik').value = s.delik; $('sYatay').value = s.yatay == null ? '' : s.yatay; $('sDikey').value = s.dikey == null ? '' : s.dikey; }
     const dun = gunAnahtar(s.bas) !== gunAnahtar(Date.now());
     const uzun = dun || gecen(s.bas) > 10 * 3600000;
     $('kpBitisAlan').hidden = !uzun; $('kpBitisAc').hidden = uzun;
@@ -751,13 +753,9 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
       const isaret = (id, m) => { $(id).classList.add('hatali'); $(id).focus(); hata('bHata', m); };
       const no = $('sNo').value.trim();
       if (!no) return isaret('sNo', 'Sipariş numarasını yazın.');
-      const cnc = !$('sCnc').hidden, del = sayi($('sDelik').value);
-      if (cnc && (del === '' || !Number.isInteger(del) || del < 0)) return isaret('sDelik', 'Delik sayısını tam sayı olarak yazın.');
-      if (cnc && $('sYatay').value && isNaN(sayi($('sYatay').value))) return isaret('sYatay', 'Yatay mesafe sayı olmalı (ör. 12,5).');
-      if (cnc && $('sDikey').value && isNaN(sayi($('sDikey').value))) return isaret('sDikey', 'Dikey mesafe sayı olmalı (ör. 12,5).');
       if (k.siparis) return hata('bHata', 'Açık bir sipariş var (' + k.siparis.no + '). Önce onu kapatın.');
       const geri = sipGeri, id = yeniNo('S'), t = (geri || simdi).toISOString();
-      const veri = { id, no, delik: cnc ? del : '', yatay: cnc ? sayi($('sYatay').value) : '', dikey: cnc ? sayi($('sDikey').value) : '', t };
+      const veri = { id, no, t };
       olay(k, 'SB', veri, geri ? { konu: 'Sipariş başlangıcı geriye alındı', aciklama: 'Sipariş ' + no + ' başlangıcı ' + saatYaz(geri) +
         ' olarak girildi (kayıt yokken üretim yapıldığı söylendi), butona ' + saatYaz(simdi) + ' basıldı.' + (sipGeriNot ? ' Not: ' + sipGeriNot : '') } : null);
       k.siparis = Object.assign({ bas: t, bitenDurusDk: 0, isaret: geri ? 'Başlangıç geriye alındı' : '' }, veri);
@@ -767,12 +765,16 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
     }
     if (ekran === 'ekKapat') {
       const s = k.siparis; if (!s) return goster('ekAna');
-      ['kpAdet', 'kpFire', 'kpBitis'].forEach(id => $(id).classList.remove('hatali'));
+      ['kpAdet', 'kpFire', 'kpBitis'].concat(cncAlan).forEach(id => $(id).classList.remove('hatali'));
       const isaret = (id, m) => { $(id).classList.add('hatali'); $(id).focus(); hata('kpHata', m); };
       const adet = sayi($('kpAdet').value), fire = sayi($('kpFire').value);
       if (adet === '' || !Number.isInteger(adet) || adet < 0) return isaret('kpAdet', 'Üretilen adedi yazın.');
       if (fire !== '' && (!Number.isInteger(fire) || fire < 0)) return isaret('kpFire', 'Fire adedi tam sayı olmalı.');
       if (fire !== '' && fire > adet) return isaret('kpFire', 'Fire adedi üretim adedinden büyük olamaz.');
+      const cnc = !$('sCnc').hidden, del = sayi($('sDelik').value), yat = sayi($('sYatay').value), dik = sayi($('sDikey').value);
+      if (cnc && (del === '' || !Number.isInteger(del) || del < 0)) return isaret('sDelik', 'Delik sayısını tam sayı olarak yazın.');
+      if (cnc && yat !== '' && isNaN(yat)) return isaret('sYatay', 'Yatay mesafe sayı olmalı (ör. 12,5).');
+      if (cnc && dik !== '' && isNaN(dik)) return isaret('sDikey', 'Dikey mesafe sayı olmalı (ör. 12,5).');
       const sonuc = document.querySelector('input[name="kpSonuc"]:checked');
       if (!sonuc) { $('kpBitti').focus(); return hata('kpHata', 'Siparişin bitip bitmediğini seçin.'); }
       let bitis = simdi, isaretYazi = '', kontrol = null;
@@ -802,6 +804,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
         return t + (b2 > a ? molaHaric(a, b2) : 0);
       }, 0));
       const ev = olay(k, 'SK', { id: s.id, t: bitis.toISOString(), basilan: simdi.toISOString(), adet, fire: fire === '' ? 0 : fire,
+        delik: cnc ? del : '', yatay: cnc ? yat : '', dikey: cnc ? dik : '',
         sonuc: sonuc.value, not: $('kpNot').value.trim(), isaret: isaretYazi }, kontrol);
       k.gecmis.push({ tur: 'siparis', id: s.id, no: s.no, bas: s.bas, bit: bitis.toISOString(), brut, durus: ds, adet, fire: fire === '' ? 0 : fire,
         sonuc: sonuc.value, isaret: isaretYazi, oid: ev.oid });
