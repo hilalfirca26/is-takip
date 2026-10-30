@@ -166,6 +166,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
 @media (max-width: 460px) { .ozet-tablo.ozet-4 { grid-template-columns: 1fr 1fr; } .ozet-tablo.ozet-4 > div:nth-child(3) { border-left: 0; } }
 .liste .acik { display: block; color: var(--ink); }
 .liste .islem { display: flex; gap: 16px; margin-top: 2px; }
+.ozet-satir { margin: 0; font-size: 15px; background: var(--sunk); border-radius: var(--r); padding: 10px 14px; }
 </style>
 </head>
 <body>
@@ -319,15 +320,8 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
       <input type="date" id="ozTarih" aria-label="Tarih">
       <button class="btn btn-ikincil" id="ozSonra" type="button" aria-label="Sonraki gün">›</button>
     </div>
-    <div class="ozet-tablo ozet-4">
-      <div><b id="ozSip">0</b><span>sipariş</span></div>
-      <div><b id="ozAdet">0</b><span>adet</span></div>
-      <div><b id="ozCalisma">0</b><span>çalışma dk</span></div>
-      <div><b id="ozDurus">0</b><span>duruş dk</span></div>
-    </div>
-    <p class="sub" id="ozFire" style="margin:0"></p>
-    <ul class="liste" id="ozNedenler"></ul>
-    <h2>Kayıtlar</h2>
+    <p class="ozet-satir" id="ozToplam"></p>
+    <h2>O günün kayıtları (sabahtan akşama)</h2>
     <ul class="liste" id="ozListe"></ul>
     <button class="btn btn-ikincil" id="ozGeri" type="button">Ana ekrana dön</button>
   </section>
@@ -856,12 +850,10 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
     const kay = k.gecmis.filter(x => gunAnahtar(x.bas) === anahtar || gunAnahtar(x.bit) === anahtar).slice().sort((a, b) => a.bas < b.bas ? -1 : 1);
     const sip = kay.filter(x => x.tur === 'siparis'), dur = kay.filter(x => x.tur === 'durus');
     const top = (l, f) => l.reduce((t, x) => t + (Number(f(x)) || 0), 0);
-    $('ozSip').textContent = sip.length; $('ozAdet').textContent = top(sip, x => x.adet);
-    $('ozCalisma').textContent = top(sip, x => (Number(x.brut) || 0) - (Number(x.durus) || 0)); $('ozDurus').textContent = top(dur, x => x.sure);
     const fire = top(sip, x => x.fire);
-    $('ozFire').textContent = fire ? 'Fire / hatalı: ' + fire + ' adet' : '';
-    const grup = {}; dur.forEach(x => grup[x.neden] = (grup[x.neden] || 0) + (Number(x.sure) || 0));
-    $('ozNedenler').innerHTML = Object.keys(grup).sort((a, b) => grup[b] - grup[a]).map(n => '<li class="t-durus"><span class="saat mono">' + grup[n] + ' dk</span><span class="bas">' + esc(n) + '</span></li>').join('');
+    $('ozToplam').textContent = kay.length ? sip.length + ' sipariş · ' + top(sip, x => x.adet) + ' adet' + (fire ? ' · ' + fire + ' fire' : '') +
+      ' · ' + dur.length + ' duruş (' + top(dur, x => x.sure) + ' dk)' : '';
+    $('ozToplam').hidden = !kay.length;
     const bekleyen = new Set(S.kuyruk.map(e => e.oid));
     $('ozListe').innerHTML = kay.length ? kay.map(x => kayitHtml(x, bekleyen)).join('') : '<p class="bos">Bu gün için bu tablette kayıt yok.</p>';
     $('ozAlt').textContent = etiket() + ' · ' + g.toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' }) +
