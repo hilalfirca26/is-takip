@@ -634,6 +634,9 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
     const bek = bekleyen.has(x.oid) ? ' · <span class="bekl">gönderilmedi</span>' : '';
     if (x.tur === 'siparis') {
       const notlar = x.notlar && x.notlar.length ? '<span class="acik">Not: ' + esc(x.notlar.map(n => n.metin).join(' · ')) + '</span>' : '';
+      if (x.acik) return '<li class="t-siparis"><span class="saat">' + saatYaz(x.bas) + '–…</span><span class="bas">Sipariş ' + esc(x.no) + ' · devam ediyor</span><span class="det">' +
+        (x.delik !== '' && x.delik != null ? esc(x.delik) + ' delik' : 'Henüz kapatılmadı') + notlar +
+        '<span class="islem"><button type="button" class="link" data-not="' + esc(x.id) + '">Not ekle</button></span></span></li>';
       return '<li class="t-siparis"><span class="saat">' + saatYaz(x.bas) + '–' + saatYaz(x.bit) + '</span><span class="bas">Sipariş ' + esc(x.no) +
         (x.sonuc === 'Yarım bırakıldı' ? ' · yarım bırakıldı' : '') + (x.isaret ? ' · ' + esc(x.isaret) : '') + '</span><span class="det"><span class="mono">' + esc(x.adet) + '</span> adet' +
         (Number(x.fire) ? ' · ' + esc(x.fire) + ' fire' : '') + (x.delik !== '' && x.delik != null ? ' · ' + esc(x.delik) + ' delik' : '') +
@@ -641,7 +644,8 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
         '<span class="islem"><button type="button" class="link" data-not="' + esc(x.id) + '">Not ekle</button>' +
         '<button type="button" class="link" data-duzelt="' + esc(x.id) + '">Düzelt</button></span></span></li>';
     }
-    return '<li class="t-durus"><span class="saat">' + saatYaz(x.bas) + '–' + saatYaz(x.bit) + '</span><span class="bas">' + esc(x.neden) + ' · ' + esc(x.sure) + ' dk</span><span class="det">' +
+    return '<li class="t-durus"><span class="saat">' + saatYaz(x.bas) + '–' + (x.acik ? '…' : saatYaz(x.bit)) + '</span><span class="bas">' + esc(x.neden) +
+      (x.acik ? ' · devam ediyor' : ' · ' + esc(x.sure) + ' dk') + '</span><span class="det">' +
       (x.aciklama ? '<span class="acik">' + esc(x.aciklama) + '</span>' : '') +
       (x.sipId ? 'Sipariş ' + esc(x.sipNo) + ' içinde' : 'Sipariş dışı') + (x.isaret ? ' · ' + esc(x.isaret) : '') + bek + '</span></li>';
   }
@@ -811,7 +815,8 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
   /* ---------- Siparişe not ---------- */
   const HIZLI_NOT = ['Kıl sorunlu', 'Taban sorunlu', 'Malzeme geç geldi', 'Makine yavaş çalışıyor', 'Zor / karmaşık iş', 'Ayar için destek bekledim'];
   let notHedef = null;
-  const notSiparisi = (k, id) => (k.siparis && k.siparis.id === id) ? k.siparis : k.gecmis.find(x => x.tur === 'siparis' && x.id === id);
+  const notSiparisi = (k, id) => (k.siparis && k.siparis.id === id) ? k.siparis : (k.gecmis.find(x => x.tur === 'siparis' && x.id === id) ||
+    uzaktanAl(id) || uzakListe.find(x => x.tur === 'siparis' && x.id === id));
   function notAc(id) {
     const s = notSiparisi(K(), id); if (!s) return;
     notHedef = id; geriOzet = ekran === 'ekOzet';
@@ -847,18 +852,52 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
     $('ozTarih').max = gunInput(bugun); $('ozTarih').min = gunInput(en); $('ozTarih').value = gunInput(g);
     $('ozOnce').disabled = g <= en; $('ozSonra').disabled = g >= bugun;
     const anahtar = gunAnahtar(g), k = K();
-    const kay = k.gecmis.filter(x => gunAnahtar(x.bas) === anahtar || gunAnahtar(x.bit) === anahtar).slice().sort((a, b) => a.bas < b.bas ? -1 : 1);
-    const sip = kay.filter(x => x.tur === 'siparis'), dur = kay.filter(x => x.tur === 'durus');
+    uzakDurum = DEMO ? '' : 'yukleniyor'; uzakListe = [];
+    ozetCiz();
+    goster('ekOzet');
+    ozetGetir(g);
+  }
+  /** Gün özeti listesi: bu cihazdaki kayıtlar + tablodan gelen (başka cihazda girilmiş ya da silinmiş) kayıtlar. */
+  function ozetCiz() {
+    const g = ozetGun, anahtar = gunAnahtar(g), k = K();
+    const yerel = k.gecmis.filter(x => gunAnahtar(x.bas) === anahtar || gunAnahtar(x.bit) === anahtar);
+    const bilinen = new Set(k.gecmis.map(x => x.id).concat([k.siparis && k.siparis.id, k.durus && k.durus.id].filter(Boolean)));
+    const kay = yerel.concat(uzakListe.filter(x => !bilinen.has(x.id))).sort((a, b) => a.bas < b.bas ? -1 : 1);
+    const sip = kay.filter(x => x.tur === 'siparis' && !x.acik), dur = kay.filter(x => x.tur === 'durus' && !x.acik);
     const top = (l, f) => l.reduce((t, x) => t + (Number(f(x)) || 0), 0);
     const fire = top(sip, x => x.fire);
     $('ozToplam').textContent = kay.length ? sip.length + ' sipariş · ' + top(sip, x => x.adet) + ' adet' + (fire ? ' · ' + fire + ' fire' : '') +
       ' · ' + dur.length + ' duruş (' + top(dur, x => x.sure) + ' dk)' : '';
     $('ozToplam').hidden = !kay.length;
     const bekleyen = new Set(S.kuyruk.map(e => e.oid));
-    $('ozListe').innerHTML = kay.length ? kay.map(x => kayitHtml(x, bekleyen)).join('') : '<p class="bos">Bu gün için bu tablette kayıt yok.</p>';
+    $('ozListe').innerHTML = kay.length ? kay.map(x => kayitHtml(x, bekleyen)).join('')
+      : '<p class="bos">' + (uzakDurum === 'yukleniyor' ? 'Kayıtlar tablodan getiriliyor…' : 'Bu gün için kayıt yok.') + '</p>';
     $('ozAlt').textContent = etiket() + ' · ' + g.toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' }) +
-      (gunAnahtar(Date.now()) === anahtar && (k.siparis || k.durus) ? ' · açık kayıtlar kapanınca eklenir' : '');
-    goster('ekOzet');
+      ({ yukleniyor: ' · tablodan kontrol ediliyor…', tamam: ' · tablo ile güncel', yok: ' · internet yok, sadece bu cihazdaki kayıtlar' }[uzakDurum] || '');
+  }
+  let uzakDurum = '', uzakListe = [];
+  async function ozetGetir(g) {
+    if (DEMO) return;
+    const q = '?api=gun&tarih=' + gunInput(g) + '&personel=' + encodeURIComponent(kimlik.personel) + '&makine=' + encodeURIComponent(kimlik.makine || '');
+    let j = null;
+    try {
+      const ctl = new AbortController(), zam = setTimeout(() => ctl.abort(), 20000);
+      const r = await fetch(API + q, { cache: 'no-store', signal: ctl.signal });
+      clearTimeout(zam); j = await r.json();
+    } catch (e) { j = null; }
+    if (ozetGun !== g || ekran !== 'ekOzet') return; // bu arada başka güne geçildi
+    if (!j || !j.ok) { uzakDurum = 'yok'; return ozetCiz(); }
+    const notlar = t => String(t || '').split(' | ').filter(Boolean).map(m => ({ metin: m }));
+    uzakListe = (j.siparisler || []).map(x => Object.assign({ tur: 'siparis', uzak: true, notlar: notlar(x.not) }, x))
+      .concat((j.duruslar || []).map(x => Object.assign({ tur: 'durus', uzak: true }, x)));
+    uzakDurum = 'tamam'; ozetCiz();
+  }
+  /** Tablodan gelen kayıt üzerinde işlem yapılacaksa bu cihazın geçmişine alınır. */
+  function uzaktanAl(id) {
+    const x = uzakListe.find(u => u.id === id && u.tur === 'siparis' && !u.acik); if (!x) return null;
+    const k = K(); let y = k.gecmis.find(g => g.id === id);
+    if (!y) { y = Object.assign({}, x); delete y.uzak; delete y.not; k.gecmis.push(y); kaydet(); }
+    return y;
   }
   $('bOzet').addEventListener('click', () => ozetAc(null));
   $('ozGeri').addEventListener('click', () => { goster('ekAna'); ciz(); });
@@ -870,7 +909,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
   let duzeltHedef = null;
   const dzCncAlan = ['dzDelik', 'dzYatay', 'dzDikey'];
   function duzeltAc(id) {
-    const x = K().gecmis.find(g => g.tur === 'siparis' && g.id === id); if (!x) return;
+    const x = K().gecmis.find(g => g.tur === 'siparis' && g.id === id) || uzaktanAl(id); if (!x) return;
     duzeltHedef = id; geriOzet = ekran === 'ekOzet';
     ['dzAdet', 'dzFire', 'dzNeden'].concat(dzCncAlan).forEach(i => { $(i).value = ''; $(i).classList.remove('hatali'); });
     $('dzAdet').value = x.adet; $('dzFire').value = Number(x.fire) ? x.fire : '';
