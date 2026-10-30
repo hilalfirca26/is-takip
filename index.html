@@ -151,6 +151,12 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
 .kur p { margin: 0; font-size: 14px; }
 .kur .btn { width: auto; min-height: 44px; padding: 8px 14px; font-size: 15px; }
 @media (max-width: 420px) { .kim .ad { max-width: 30vw; } }
+
+.not-yazi { margin: 0; font-size: 14px; color: var(--ink); background: var(--sunk); border-radius: var(--r); padding: 8px 12px; overflow-wrap: anywhere; }
+.hizli { display: flex; flex-wrap: wrap; gap: 8px; }
+.hizli-not { font: inherit; font-size: 15px; font-weight: 600; min-height: 44px; padding: 8px 14px; border-radius: 999px; border: 1.5px solid var(--line);
+  background: var(--surface); color: var(--ink); cursor: pointer; }
+.liste .det .link { padding: 0; min-height: 0; font-size: 14px; margin-left: 4px; }
 </style>
 </head>
 <body>
@@ -195,8 +201,10 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
       <div class="baslik" id="kSipNo"></div>
       <div class="sayac" id="kSipSayac">00:00:00</div>
       <div class="bilgi" id="kSipBilgi"></div>
+      <p class="not-yazi" id="kSipNot" hidden></p>
       <p class="uyari" id="kSipUyari" hidden></p>
       <button class="btn btn-ana btn-dev" id="bSipKapat" type="button">Siparişi Kapat</button>
+      <button class="btn btn-ikincil" id="bSipNot" type="button">Not ekle (iş yavaş gidiyor, malzeme sorunu…)</button>
     </div>
 
     <div class="kart boskart" id="kBosluk" hidden>
@@ -293,6 +301,14 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
     </div>
     <div class="alan"><label for="eAcik" id="eAcikEt">Açıklama</label><input id="eAcik" autocomplete="off" placeholder="İsteğe bağlı"></div>
     <p class="hata" id="eHata" hidden></p>
+  </section>
+
+  <section id="ekNot" hidden>
+    <div><h1 id="nBaslik">Not ekle</h1><p class="sub" id="nAlt"></p></div>
+    <span class="etiket">Hızlı seçim</span>
+    <div class="hizli" id="nHizli"></div>
+    <div class="alan"><label for="nMetin">Not<i>*</i></label><textarea id="nMetin" placeholder="Örn. kıllar kötü geldi, iş yavaş gidiyor"></textarea></div>
+    <p class="hata" id="nHata" hidden></p>
   </section>
 </main>
 
@@ -447,11 +463,11 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
   }
 
   /* ---------- Ekranlar ---------- */
-  const ALT = { ekBaslat: 'Siparişi Başlat', ekKapat: 'Siparişi Kapat', ekDurus: 'Duruşu Başlat', ekBitir: 'Duruşu Bitir', ekBosluk: 'Kaydet ve Devam Et', ekEkle: 'Duruşu Ekle' };
+  const ALT = { ekBaslat: 'Siparişi Başlat', ekKapat: 'Siparişi Kapat', ekDurus: 'Duruşu Başlat', ekBitir: 'Duruşu Bitir', ekBosluk: 'Kaydet ve Devam Et', ekEkle: 'Duruşu Ekle', ekNot: 'Notu Kaydet' };
   const DUR_EKRAN = { ekDurus: 1, ekBitir: 1, ekEkle: 1 };
   function goster(ad) {
     ekran = ad;
-    ['ekYukle', 'ekGiris', 'ekAna', 'ekBaslat', 'ekKapat', 'ekDurus', 'ekBitir', 'ekBosluk', 'ekEkle'].forEach(id => $(id).hidden = id !== ad);
+    ['ekYukle', 'ekGiris', 'ekAna', 'ekBaslat', 'ekKapat', 'ekDurus', 'ekBitir', 'ekBosluk', 'ekEkle', 'ekNot'].forEach(id => $(id).hidden = id !== ad);
     $('altBar').hidden = !ALT[ad];
     if (ALT[ad]) { $('altOnay').textContent = ALT[ad]; $('altOnay').className = 'btn ' + (DUR_EKRAN[ad] ? 'btn-dur' : 'btn-ana'); }
     $('kimBtn').hidden = !kimlik || ad === 'ekGiris';
@@ -533,11 +549,9 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
     if (s) {
       $('kSipNo').textContent = 'Sipariş ' + s.no;
       $('kSipBas').textContent = 'Başladı ' + saatYaz(s.bas);
-      const dun = gunAnahtar(s.bas) !== gunAnahtar(Date.now());
-      const uzun = dun || gecen(s.bas) > 10 * 3600000;
-      $('kSipUyari').hidden = !uzun;
-      if (uzun) $('kSipUyari').textContent = (dun ? 'Bu sipariş önceki günden açık kalmış. ' : 'Bu sipariş 10 saatten uzun süredir açık. ') +
-        'Kapatırken gerçek bitiş saatini girin. Gün sonunda biten iş “Yarım bıraktım” ile kapatılmalı.';
+      sipUyariGoster(s);
+      $('kSipNot').hidden = !(s.notlar && s.notlar.length);
+      if (s.notlar && s.notlar.length) $('kSipNot').textContent = 'Not: ' + s.notlar.map(n => saatYaz(n.t) + ' ' + n.metin).join(' · ');
     }
     if (d) {
       $('kDurusNeden').textContent = d.neden + (d.aciklama ? ' · ' + d.aciklama : '');
@@ -546,6 +560,21 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
     }
     tik();
     listeCiz();
+  }
+  /** Gün sonu başlangıcı: o günün standart temizliğinin başı (yoksa vardiya bitişi). */
+  function gunSonuBas(g) {
+    const t = vd().temizlik || {}, l = (new Date(g).getDay() === 5 ? t.cuma : t.diger) || [];
+    return saatte(g, l.length ? l[0][0] : vd().bitis);
+  }
+  function sipUyariGoster(s) {
+    const dun = gunAnahtar(s.bas) !== gunAnahtar(Date.now());
+    const uzun = dun || gecen(s.bas) > 10 * 3600000;
+    const gunSonu = !dun && Date.now() >= gunSonuBas(Date.now()).getTime();
+    const m = dun ? 'Bu sipariş önceki günden açık kalmış. Kapatırken dünkü bitiş saatini kontrol edin.'
+      : gunSonu ? 'Gün bitiyor. İş bittiyse “Bitti”, bitmediyse “Yarım bıraktım” seçerek siparişi şimdi kapatın; yarın yeniden başlatırsınız.'
+      : uzun ? 'Bu sipariş 10 saatten uzun süredir açık. Kapatırken gerçek bitiş saatini girin.' : '';
+    if ($('kSipUyari').textContent !== m) $('kSipUyari').textContent = m;
+    $('kSipUyari').hidden = !m;
   }
   function listeCiz() {
     if (!kimlik) return;
@@ -556,7 +585,9 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
     $('liste').innerHTML = g.length ? g.map(x => x.tur === 'siparis'
       ? '<li class="t-siparis"><span class="saat">' + saatYaz(x.bas) + '–' + saatYaz(x.bit) + '</span><span class="bas">Sipariş ' + esc(x.no) +
         (x.sonuc === 'Yarım bırakıldı' ? ' · yarım bırakıldı' : '') + (x.isaret ? ' · ' + esc(x.isaret) : '') + '</span><span class="det"><span class="mono">' + esc(x.adet) + '</span> adet' +
-        (Number(x.fire) ? ' · ' + esc(x.fire) + ' fire' : '') + ' · ' + esc(x.brut) + ' dk' + (Number(x.durus) ? ' · ' + esc(x.durus) + ' dk duruş' : '') + bek(x) + '</span></li>'
+        (Number(x.fire) ? ' · ' + esc(x.fire) + ' fire' : '') + ' · ' + esc(x.brut) + ' dk' + (Number(x.durus) ? ' · ' + esc(x.durus) + ' dk duruş' : '') + bek(x) +
+        (x.notlar && x.notlar.length ? '<br>Not: ' + esc(x.notlar.map(n => n.metin).join(' · ')) : '') +
+        ' <button type="button" class="link" data-not="' + esc(x.id) + '">Not ekle</button></span></li>'
       : '<li class="t-durus"><span class="saat">' + saatYaz(x.bas) + '–' + saatYaz(x.bit) + '</span><span class="bas">' + esc(x.neden) + ' · ' + esc(x.sure) + ' dk</span><span class="det">' +
         (x.sipId ? 'Sipariş ' + esc(x.sipNo) + ' içinde' : 'Sipariş dışı') + (x.isaret ? ' · ' + esc(x.isaret) : '') + bek(x) + '</span></li>').join('')
       : '<p class="bos">Bugün henüz kapanan kayıt yok.</p>';
@@ -574,6 +605,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
     if (k.siparis) {
       $('kSipSayac').textContent = sure(gecen(k.siparis.bas));
       $('kSipBilgi').innerHTML = 'Bu siparişteki duruş: <b>' + durusToplam(k) + ' dk</b>';
+      if (ekran === 'ekAna') sipUyariGoster(k.siparis);
     }
     if (k.durus) {
       $('kDurusSayac').textContent = sure(gecen(k.durus.bas));
@@ -653,7 +685,11 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
     const dun = gunAnahtar(s.bas) !== gunAnahtar(Date.now());
     const uzun = dun || gecen(s.bas) > 10 * 3600000;
     $('kpBitisAlan').hidden = !uzun; $('kpBitisAc').hidden = uzun;
-    $('kpBitisIpucu').textContent = dun ? 'Sipariş ' + new Date(s.bas).toLocaleDateString('tr-TR') + ' günü başlamış. O gün işin bittiği saati yazın.'
+    if (dun) { // Unutulmuş sipariş: bitiş o günün gün sonu (temizlik başı) olarak hazır gelir
+      let gs = gunSonuBas(s.bas); if (!(gs > new Date(s.bas))) gs = saatte(s.bas, vd().bitis);
+      if (gs > new Date(s.bas)) $('kpBitis').value = saatYaz(gs);
+    }
+    $('kpBitisIpucu').textContent = dun ? 'Sipariş ' + new Date(s.bas).toLocaleDateString('tr-TR') + ' günü başlamış. Bitiş o günün mesai sonu olarak dolduruldu; iş daha önce bittiyse düzeltin.'
       : (uzun ? 'Sipariş 10 saatten uzun süredir açık. İş daha önce bittiyse gerçek saati yazın; şimdi bittiyse boş bırakın.' : 'Boş bırakırsanız bitiş şu an kabul edilir.');
     document.querySelectorAll('input[name="kpSonuc"]').forEach(r => r.checked = false);
     $('kpBaslik').textContent = 'Sipariş ' + s.no;
@@ -663,7 +699,8 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
   $('kpBitisAc').addEventListener('click', () => { $('kpBitisAlan').hidden = false; $('kpBitisAc').hidden = true; $('kpBitis').focus(); });
   function kapatOzet() {
     const k = K(), s = k.siparis; if (!s) return;
-    const brut = molaHaric(s.bas, Date.now()), ds = Math.min(brut, durusToplam(k));
+    const bv = $('kpBitisAlan').hidden ? '' : $('kpBitis').value, son = bv ? saatte(s.bas, bv) : new Date();
+    const brut = son > new Date(s.bas) ? molaHaric(s.bas, son) : 0, ds = Math.min(brut, durusToplam(k));
     $('kpBrut').textContent = brut; $('kpDurus').textContent = ds; $('kpNet').textContent = brut - ds;
     const bagli = k.durus && k.durus.sipId === s.id;
     $('kpUyari').hidden = !bagli;
@@ -717,6 +754,27 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
     acikZorunlu('eAcikEt', 'eAcik', false); hata('eHata', ''); goster('ekEkle');
   });
   nedenSecici('eNedenler', n => { eNeden = n; acikZorunlu('eAcikEt', 'eAcik', n === 'DİĞER'); });
+
+  /* ---------- Siparişe not ---------- */
+  const HIZLI_NOT = ['Kıl sorunlu', 'Taban sorunlu', 'Malzeme geç geldi', 'Makine yavaş çalışıyor', 'Zor / karmaşık iş', 'Ayar için destek bekledim'];
+  let notHedef = null;
+  const notSiparisi = (k, id) => (k.siparis && k.siparis.id === id) ? k.siparis : k.gecmis.find(x => x.tur === 'siparis' && x.id === id);
+  function notAc(id) {
+    const s = notSiparisi(K(), id); if (!s) return;
+    notHedef = id;
+    $('nBaslik').textContent = 'Sipariş ' + s.no + ' · not ekle';
+    $('nAlt').textContent = s.notlar && s.notlar.length ? 'Önceki notlar: ' + s.notlar.map(n => saatYaz(n.t) + ' ' + n.metin).join(' · ')
+      : 'İşi yavaşlatan ya da etkileyen bir durum varsa yazın. Tabloda siparişin “Not” sütununa saatiyle eklenir.';
+    $('nHizli').innerHTML = HIZLI_NOT.map(n => '<button type="button" class="hizli-not">' + esc(n) + '</button>').join('');
+    $('nMetin').value = ''; $('nMetin').classList.remove('hatali'); hata('nHata', ''); goster('ekNot');
+  }
+  $('nHizli').addEventListener('click', e => {
+    const b = e.target.closest('.hizli-not'); if (!b) return;
+    const v = $('nMetin').value.trim();
+    $('nMetin').value = v ? v + ', ' + b.textContent.toLocaleLowerCase('tr-TR') : b.textContent;
+  });
+  $('bSipNot').addEventListener('click', () => { const s = K().siparis; if (s) notAc(s.id); });
+  $('liste').addEventListener('click', e => { const b = e.target.closest('[data-not]'); if (b) notAc(b.dataset.not); });
 
   /* ---------- Duruşu bitir ---------- */
   $('btSimdi').addEventListener('change', () => { $('btSaatAlan').hidden = true; });
@@ -807,7 +865,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
         delik: cnc ? del : '', yatay: cnc ? yat : '', dikey: cnc ? dik : '',
         sonuc: sonuc.value, not: $('kpNot').value.trim(), isaret: isaretYazi }, kontrol);
       k.gecmis.push({ tur: 'siparis', id: s.id, no: s.no, bas: s.bas, bit: bitis.toISOString(), brut, durus: ds, adet, fire: fire === '' ? 0 : fire,
-        sonuc: sonuc.value, isaret: isaretYazi, oid: ev.oid });
+        sonuc: sonuc.value, isaret: isaretYazi, oid: ev.oid, notlar: (s.notlar || []).concat($('kpNot').value.trim() ? [{ t: simdi.toISOString(), metin: $('kpNot').value.trim() }] : []) });
       k.siparis = null;
       // Bitiş geriye alındıysa arada kalan süreyi hemen sor
       return bitti('Sipariş ' + s.no + ' kapatıldı', () => { if (bosluk()) boslukAc(null); });
@@ -856,6 +914,14 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
       const sonra = sonraki;
       // Başka boşluk da varsa sıradakini sor; yoksa kaldığı yerden devam
       return bitti('Kaydedildi', () => { if (bosluk()) boslukAc(sonra); else if (sonra === 'siparis') siparisFormu(); else if (sonra === 'durus') durusFormu(); });
+    }
+    if (ekran === 'ekNot') {
+      const metin = $('nMetin').value.trim();
+      if (!metin) { $('nMetin').classList.add('hatali'); $('nMetin').focus(); return hata('nHata', 'Notu yazın ya da hızlı seçimden birine dokunun.'); }
+      const s = notSiparisi(k, notHedef); if (!s) return goster('ekAna');
+      olay(k, 'SN', { id: s.id, not: metin });
+      (s.notlar = s.notlar || []).push({ t: simdi.toISOString(), metin });
+      return bitti('Not eklendi');
     }
     if (ekran === 'ekEkle') {
       if (!eNeden) return hata('eHata', 'Duruşun nedenini seçin.');
