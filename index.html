@@ -157,6 +157,15 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
 .hizli-not { font: inherit; font-size: 15px; font-weight: 600; min-height: 44px; padding: 8px 14px; border-radius: 999px; border: 1.5px solid var(--line);
   background: var(--surface); color: var(--ink); cursor: pointer; }
 .liste .det .link { padding: 0; min-height: 0; font-size: 14px; margin-left: 4px; }
+
+.baslik-satir { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.baslik-satir h2 { margin: 6px 0 0; }
+.tarih-sec { display: grid; grid-template-columns: 64px 1fr 64px; gap: 10px; }
+.tarih-sec .btn { font-size: 24px; padding: 0; }
+.ozet-tablo.ozet-4 { grid-template-columns: repeat(4, 1fr); }
+@media (max-width: 460px) { .ozet-tablo.ozet-4 { grid-template-columns: 1fr 1fr; } .ozet-tablo.ozet-4 > div:nth-child(3) { border-left: 0; } }
+.liste .acik { display: block; color: var(--ink); }
+.liste .islem { display: flex; gap: 16px; margin-top: 2px; }
 </style>
 </head>
 <body>
@@ -218,7 +227,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
     <button class="btn btn-dur-acik" id="bDurusBaslat" type="button">Duruş Başlat</button>
     <button class="link" id="bDurusEkle" type="button">Unutulan bir duruşu sonradan ekle</button>
 
-    <h2>Bugün kapanan kayıtlar</h2>
+    <div class="baslik-satir"><h2>Bugün kapanan kayıtlar</h2><button class="link" id="bOzet" type="button">Gün özeti / geçmiş günler</button></div>
     <ul class="liste" id="liste"></ul>
   </section>
 
@@ -301,6 +310,49 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
     </div>
     <div class="alan"><label for="eAcik" id="eAcikEt">Açıklama</label><input id="eAcik" autocomplete="off" placeholder="İsteğe bağlı"></div>
     <p class="hata" id="eHata" hidden></p>
+  </section>
+
+  <section id="ekOzet" hidden>
+    <div><h1>Gün özeti</h1><p class="sub" id="ozAlt"></p></div>
+    <div class="tarih-sec">
+      <button class="btn btn-ikincil" id="ozOnce" type="button" aria-label="Önceki gün">‹</button>
+      <input type="date" id="ozTarih" aria-label="Tarih">
+      <button class="btn btn-ikincil" id="ozSonra" type="button" aria-label="Sonraki gün">›</button>
+    </div>
+    <div class="ozet-tablo ozet-4">
+      <div><b id="ozSip">0</b><span>sipariş</span></div>
+      <div><b id="ozAdet">0</b><span>adet</span></div>
+      <div><b id="ozCalisma">0</b><span>çalışma dk</span></div>
+      <div><b id="ozDurus">0</b><span>duruş dk</span></div>
+    </div>
+    <p class="sub" id="ozFire" style="margin:0"></p>
+    <ul class="liste" id="ozNedenler"></ul>
+    <h2>Kayıtlar</h2>
+    <ul class="liste" id="ozListe"></ul>
+    <button class="btn btn-ikincil" id="ozGeri" type="button">Ana ekrana dön</button>
+  </section>
+
+  <section id="ekDuzelt" hidden>
+    <div><h1 id="dzBaslik">Siparişi düzelt</h1><p class="sub" id="dzAlt"></p></div>
+    <div class="iki">
+      <div class="alan"><label for="dzAdet">Üretim Adedi<i>*</i></label><input id="dzAdet" inputmode="numeric" autocomplete="off"></div>
+      <div class="alan"><label for="dzFire">Hatalı / Fire</label><input id="dzFire" inputmode="numeric" autocomplete="off" placeholder="0"></div>
+    </div>
+    <div class="uc" id="dzCnc">
+      <div class="alan"><label for="dzDelik">Delik Sayısı<i>*</i></label><input id="dzDelik" inputmode="numeric" autocomplete="off"></div>
+      <div class="alan"><label for="dzYatay">Yatay mesafe (mm)</label><input id="dzYatay" inputmode="decimal" autocomplete="off"></div>
+      <div class="alan"><label for="dzDikey">Dikey mesafe (mm)</label><input id="dzDikey" inputmode="decimal" autocomplete="off"></div>
+    </div>
+    <div class="alan">
+      <span class="etiket" id="dzSonucEt">Sipariş bitti mi?<i>*</i></span>
+      <div class="secim" role="radiogroup" aria-labelledby="dzSonucEt">
+        <input type="radio" name="dzSonuc" id="dzBitti" value="Tamamlandı"><label for="dzBitti">Bitti</label>
+        <input type="radio" name="dzSonuc" id="dzYarim" value="Yarım bırakıldı"><label for="dzYarim">Yarım bırakıldı</label>
+      </div>
+    </div>
+    <div class="alan"><label for="dzNeden">Neden düzeltiliyor?</label><input id="dzNeden" autocomplete="off" placeholder="Örn. yanlışlıkla “Bitti” dedim"></div>
+    <p class="sub" style="margin:0">Başlangıç ve bitiş saatleri değişmez. Düzeltme tabloya işlenir ve Kontrol sayfasına not düşer.</p>
+    <p class="hata" id="dzHata" hidden></p>
   </section>
 
   <section id="ekNot" hidden>
@@ -463,11 +515,11 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
   }
 
   /* ---------- Ekranlar ---------- */
-  const ALT = { ekBaslat: 'Siparişi Başlat', ekKapat: 'Siparişi Kapat', ekDurus: 'Duruşu Başlat', ekBitir: 'Duruşu Bitir', ekBosluk: 'Kaydet ve Devam Et', ekEkle: 'Duruşu Ekle', ekNot: 'Notu Kaydet' };
+  const ALT = { ekBaslat: 'Siparişi Başlat', ekKapat: 'Siparişi Kapat', ekDurus: 'Duruşu Başlat', ekBitir: 'Duruşu Bitir', ekBosluk: 'Kaydet ve Devam Et', ekEkle: 'Duruşu Ekle', ekNot: 'Notu Kaydet', ekDuzelt: 'Düzeltmeyi Kaydet' };
   const DUR_EKRAN = { ekDurus: 1, ekBitir: 1, ekEkle: 1 };
   function goster(ad) {
     ekran = ad;
-    ['ekYukle', 'ekGiris', 'ekAna', 'ekBaslat', 'ekKapat', 'ekDurus', 'ekBitir', 'ekBosluk', 'ekEkle', 'ekNot'].forEach(id => $(id).hidden = id !== ad);
+    ['ekYukle', 'ekGiris', 'ekAna', 'ekBaslat', 'ekKapat', 'ekDurus', 'ekBitir', 'ekBosluk', 'ekEkle', 'ekNot', 'ekOzet', 'ekDuzelt'].forEach(id => $(id).hidden = id !== ad);
     $('altBar').hidden = !ALT[ad];
     if (ALT[ad]) { $('altOnay').textContent = ALT[ad]; $('altOnay').className = 'btn ' + (DUR_EKRAN[ad] ? 'btn-dur' : 'btn-ana'); }
     $('kimBtn').hidden = !kimlik || ad === 'ekGiris';
@@ -581,16 +633,23 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
     const bekleyen = new Set(S.kuyruk.map(e => e.oid));
     const bugun = gunAnahtar(Date.now());
     const g = K().gecmis.filter(x => gunAnahtar(x.bas) === bugun || gunAnahtar(x.bit) === bugun).slice().sort((a, b) => a.bas < b.bas ? 1 : -1);
-    const bek = x => bekleyen.has(x.oid) ? ' · <span class="bekl">gönderilmedi</span>' : '';
-    $('liste').innerHTML = g.length ? g.map(x => x.tur === 'siparis'
-      ? '<li class="t-siparis"><span class="saat">' + saatYaz(x.bas) + '–' + saatYaz(x.bit) + '</span><span class="bas">Sipariş ' + esc(x.no) +
+    $('liste').innerHTML = g.length ? g.map(x => kayitHtml(x, bekleyen)).join('') : '<p class="bos">Bugün henüz kapanan kayıt yok.</p>';
+  }
+  /** Bir geçmiş kaydının liste satırı (ana ekran ve gün özeti ortak). */
+  function kayitHtml(x, bekleyen) {
+    const bek = bekleyen.has(x.oid) ? ' · <span class="bekl">gönderilmedi</span>' : '';
+    if (x.tur === 'siparis') {
+      const notlar = x.notlar && x.notlar.length ? '<span class="acik">Not: ' + esc(x.notlar.map(n => n.metin).join(' · ')) + '</span>' : '';
+      return '<li class="t-siparis"><span class="saat">' + saatYaz(x.bas) + '–' + saatYaz(x.bit) + '</span><span class="bas">Sipariş ' + esc(x.no) +
         (x.sonuc === 'Yarım bırakıldı' ? ' · yarım bırakıldı' : '') + (x.isaret ? ' · ' + esc(x.isaret) : '') + '</span><span class="det"><span class="mono">' + esc(x.adet) + '</span> adet' +
-        (Number(x.fire) ? ' · ' + esc(x.fire) + ' fire' : '') + ' · ' + esc(x.brut) + ' dk' + (Number(x.durus) ? ' · ' + esc(x.durus) + ' dk duruş' : '') + bek(x) +
-        (x.notlar && x.notlar.length ? '<br>Not: ' + esc(x.notlar.map(n => n.metin).join(' · ')) : '') +
-        ' <button type="button" class="link" data-not="' + esc(x.id) + '">Not ekle</button></span></li>'
-      : '<li class="t-durus"><span class="saat">' + saatYaz(x.bas) + '–' + saatYaz(x.bit) + '</span><span class="bas">' + esc(x.neden) + ' · ' + esc(x.sure) + ' dk</span><span class="det">' +
-        (x.sipId ? 'Sipariş ' + esc(x.sipNo) + ' içinde' : 'Sipariş dışı') + (x.isaret ? ' · ' + esc(x.isaret) : '') + bek(x) + '</span></li>').join('')
-      : '<p class="bos">Bugün henüz kapanan kayıt yok.</p>';
+        (Number(x.fire) ? ' · ' + esc(x.fire) + ' fire' : '') + (x.delik !== '' && x.delik != null ? ' · ' + esc(x.delik) + ' delik' : '') +
+        ' · ' + esc(x.brut) + ' dk' + (Number(x.durus) ? ' · ' + esc(x.durus) + ' dk duruş' : '') + bek + notlar +
+        '<span class="islem"><button type="button" class="link" data-not="' + esc(x.id) + '">Not ekle</button>' +
+        '<button type="button" class="link" data-duzelt="' + esc(x.id) + '">Düzelt</button></span></span></li>';
+    }
+    return '<li class="t-durus"><span class="saat">' + saatYaz(x.bas) + '–' + saatYaz(x.bit) + '</span><span class="bas">' + esc(x.neden) + ' · ' + esc(x.sure) + ' dk</span><span class="det">' +
+      (x.aciklama ? '<span class="acik">' + esc(x.aciklama) + '</span>' : '') +
+      (x.sipId ? 'Sipariş ' + esc(x.sipNo) + ' içinde' : 'Sipariş dışı') + (x.isaret ? ' · ' + esc(x.isaret) : '') + bek + '</span></li>';
   }
   function durusToplam(k) {
     const s = k.siparis; if (!s) return 0;
@@ -643,7 +702,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
     return degisti;
   }
   function gecmisBudama() {
-    const sinir = Date.now() - 3 * 86400000;
+    const sinir = Date.now() - 35 * 86400000; // gün özeti için 5 hafta saklanır
     Object.keys(S.kisiler).forEach(a => { const k = S.kisiler[a]; k.gecmis = k.gecmis.filter(x => new Date(x.bit).getTime() > sinir); });
   }
 
@@ -654,7 +713,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
     if (d.ayrildi) isaret = [isaret, AYRILDI].filter(Boolean).join(' · ');
     const dakika = molaHaric(d.bas, bitis);
     const ev = olay(k, 'DT', { id: d.id, t: bitis.toISOString(), basilan: basilan ? basilan.toISOString() : '', duzeltildi: !!basilan, isaret: isaret || '' }, kontrol);
-    k.gecmis.push({ tur: 'durus', id: d.id, neden: d.neden, sipId: d.sipId, sipNo: d.sipNo, bas: d.bas, bit: bitis.toISOString(), sure: dakika, isaret: isaret || '', oid: ev.oid });
+    k.gecmis.push({ tur: 'durus', id: d.id, neden: d.neden, aciklama: d.aciklama || '', sipId: d.sipId, sipNo: d.sipNo, bas: d.bas, bit: bitis.toISOString(), sure: dakika, isaret: isaret || '', oid: ev.oid });
     if (k.siparis && d.sipId === k.siparis.id) k.siparis.bitenDurusDk = (k.siparis.bitenDurusDk || 0) + dakika;
     k.durus = null;
     kaydet();
@@ -761,7 +820,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
   const notSiparisi = (k, id) => (k.siparis && k.siparis.id === id) ? k.siparis : k.gecmis.find(x => x.tur === 'siparis' && x.id === id);
   function notAc(id) {
     const s = notSiparisi(K(), id); if (!s) return;
-    notHedef = id;
+    notHedef = id; geriOzet = ekran === 'ekOzet';
     $('nBaslik').textContent = 'Sipariş ' + s.no + ' · not ekle';
     $('nAlt').textContent = s.notlar && s.notlar.length ? 'Önceki notlar: ' + s.notlar.map(n => saatYaz(n.t) + ' ' + n.metin).join(' · ')
       : 'İşi yavaşlatan ya da etkileyen bir durum varsa yazın. Tabloda siparişin “Not” sütununa saatiyle eklenir.';
@@ -774,7 +833,62 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
     $('nMetin').value = v ? v + ', ' + b.textContent.toLocaleLowerCase('tr-TR') : b.textContent;
   });
   $('bSipNot').addEventListener('click', () => { const s = K().siparis; if (s) notAc(s.id); });
-  $('liste').addEventListener('click', e => { const b = e.target.closest('[data-not]'); if (b) notAc(b.dataset.not); });
+  const listeTik = e => {
+    const b = e.target.closest('[data-not]'); if (b) return notAc(b.dataset.not);
+    const d = e.target.closest('[data-duzelt]'); if (d) return duzeltAc(d.dataset.duzelt);
+  };
+  $('liste').addEventListener('click', listeTik);
+  $('ozListe').addEventListener('click', listeTik);
+
+  /* ---------- Gün özeti ---------- */
+  let ozetGun = null, geriOzet = false;
+  const ozeteDon = () => { if (geriOzet) { geriOzet = false; ozetAc(ozetGun); } };
+  const gunInput = d => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+  function ozetAc(gun) {
+    const bugun = new Date(); bugun.setHours(0, 0, 0, 0);
+    const en = new Date(bugun.getTime() - 34 * 86400000);
+    let g = gun ? new Date(gun) : bugun; g.setHours(0, 0, 0, 0);
+    if (g > bugun) g = bugun; if (g < en) g = en;
+    ozetGun = g;
+    $('ozTarih').max = gunInput(bugun); $('ozTarih').min = gunInput(en); $('ozTarih').value = gunInput(g);
+    $('ozOnce').disabled = g <= en; $('ozSonra').disabled = g >= bugun;
+    const anahtar = gunAnahtar(g), k = K();
+    const kay = k.gecmis.filter(x => gunAnahtar(x.bas) === anahtar || gunAnahtar(x.bit) === anahtar).slice().sort((a, b) => a.bas < b.bas ? -1 : 1);
+    const sip = kay.filter(x => x.tur === 'siparis'), dur = kay.filter(x => x.tur === 'durus');
+    const top = (l, f) => l.reduce((t, x) => t + (Number(f(x)) || 0), 0);
+    $('ozSip').textContent = sip.length; $('ozAdet').textContent = top(sip, x => x.adet);
+    $('ozCalisma').textContent = top(sip, x => (Number(x.brut) || 0) - (Number(x.durus) || 0)); $('ozDurus').textContent = top(dur, x => x.sure);
+    const fire = top(sip, x => x.fire);
+    $('ozFire').textContent = fire ? 'Fire / hatalı: ' + fire + ' adet' : '';
+    const grup = {}; dur.forEach(x => grup[x.neden] = (grup[x.neden] || 0) + (Number(x.sure) || 0));
+    $('ozNedenler').innerHTML = Object.keys(grup).sort((a, b) => grup[b] - grup[a]).map(n => '<li class="t-durus"><span class="saat mono">' + grup[n] + ' dk</span><span class="bas">' + esc(n) + '</span></li>').join('');
+    const bekleyen = new Set(S.kuyruk.map(e => e.oid));
+    $('ozListe').innerHTML = kay.length ? kay.map(x => kayitHtml(x, bekleyen)).join('') : '<p class="bos">Bu gün için bu tablette kayıt yok.</p>';
+    $('ozAlt').textContent = etiket() + ' · ' + g.toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' }) +
+      (gunAnahtar(Date.now()) === anahtar && (k.siparis || k.durus) ? ' · açık kayıtlar kapanınca eklenir' : '');
+    goster('ekOzet');
+  }
+  $('bOzet').addEventListener('click', () => ozetAc(null));
+  $('ozGeri').addEventListener('click', () => { goster('ekAna'); ciz(); });
+  $('ozTarih').addEventListener('change', () => { if ($('ozTarih').value) ozetAc($('ozTarih').value + 'T00:00:00'); });
+  $('ozOnce').addEventListener('click', () => ozetAc(new Date(ozetGun.getTime() - 86400000 + 3600000)));
+  $('ozSonra').addEventListener('click', () => ozetAc(new Date(ozetGun.getTime() + 86400000 + 3600000)));
+
+  /* ---------- Kapanmış siparişi düzelt ---------- */
+  let duzeltHedef = null;
+  const dzCncAlan = ['dzDelik', 'dzYatay', 'dzDikey'];
+  function duzeltAc(id) {
+    const x = K().gecmis.find(g => g.tur === 'siparis' && g.id === id); if (!x) return;
+    duzeltHedef = id; geriOzet = ekran === 'ekOzet';
+    ['dzAdet', 'dzFire', 'dzNeden'].concat(dzCncAlan).forEach(i => { $(i).value = ''; $(i).classList.remove('hatali'); });
+    $('dzAdet').value = x.adet; $('dzFire').value = Number(x.fire) ? x.fire : '';
+    $('dzCnc').hidden = !cncMi();
+    $('dzDelik').value = x.delik == null ? '' : x.delik; $('dzYatay').value = x.yatay == null ? '' : x.yatay; $('dzDikey').value = x.dikey == null ? '' : x.dikey;
+    $('dzBitti').checked = x.sonuc !== 'Yarım bırakıldı'; $('dzYarim').checked = x.sonuc === 'Yarım bırakıldı';
+    $('dzBaslik').textContent = 'Sipariş ' + x.no + ' · düzelt';
+    $('dzAlt').textContent = new Date(x.bas).toLocaleDateString('tr-TR') + ' · ' + saatYaz(x.bas) + '–' + saatYaz(x.bit) + ' · ' + x.brut + ' dk';
+    hata('dzHata', ''); goster('ekDuzelt'); $('dzAdet').focus();
+  }
 
   /* ---------- Duruşu bitir ---------- */
   $('btSimdi').addEventListener('change', () => { $('btSaatAlan').hidden = true; });
@@ -795,7 +909,10 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
   });
 
   /* ---------- Onay / vazgeç ---------- */
-  $('altIptal').addEventListener('click', () => { goster('ekAna'); ciz(); });
+  $('altIptal').addEventListener('click', () => {
+    if (geriOzet && (ekran === 'ekNot' || ekran === 'ekDuzelt')) { geriOzet = false; return ozetAc(ozetGun); }
+    goster('ekAna'); ciz();
+  });
   $('altOnay').addEventListener('click', () => {
     if (mesgul) return;
     mesgul = true;
@@ -865,7 +982,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
         delik: cnc ? del : '', yatay: cnc ? yat : '', dikey: cnc ? dik : '',
         sonuc: sonuc.value, not: $('kpNot').value.trim(), isaret: isaretYazi }, kontrol);
       k.gecmis.push({ tur: 'siparis', id: s.id, no: s.no, bas: s.bas, bit: bitis.toISOString(), brut, durus: ds, adet, fire: fire === '' ? 0 : fire,
-        sonuc: sonuc.value, isaret: isaretYazi, oid: ev.oid, notlar: (s.notlar || []).concat($('kpNot').value.trim() ? [{ t: simdi.toISOString(), metin: $('kpNot').value.trim() }] : []) });
+        sonuc: sonuc.value, isaret: isaretYazi, oid: ev.oid, delik: cnc ? del : '', yatay: cnc ? yat : '', dikey: cnc ? dik : '', notlar: (s.notlar || []).concat($('kpNot').value.trim() ? [{ t: simdi.toISOString(), metin: $('kpNot').value.trim() }] : []) });
       k.siparis = null;
       // Bitiş geriye alındıysa arada kalan süreyi hemen sor
       return bitti('Sipariş ' + s.no + ' kapatıldı', () => { if (bosluk()) boslukAc(null); });
@@ -908,12 +1025,33 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
           const id = yeniNo('B');
           const ev = olay(k, 'DE', { id, neden: bsNeden, aciklama: ac, sipId: '', sipNo: '', bas: b.bas.toISOString(), t: bit.toISOString(), isaret: 'Boşluk: sonradan açıklandı' },
             { konu: 'Boşluk duruş olarak girildi', aciklama: bsNeden + ' ' + saatYaz(b.bas) + '–' + saatYaz(bit) + ' (kayıt yokken geçen süre).' });
-          k.gecmis.push({ tur: 'durus', id, neden: bsNeden, sipId: '', sipNo: '', bas: b.bas.toISOString(), bit: bit.toISOString(), sure: molaHaric(b.bas, bit), isaret: 'Boşluk: sonradan açıklandı', oid: ev.oid });
+          k.gecmis.push({ tur: 'durus', id, neden: bsNeden, aciklama: ac, sipId: '', sipNo: '', bas: b.bas.toISOString(), bit: bit.toISOString(), sure: molaHaric(b.bas, bit), isaret: 'Boşluk: sonradan açıklandı', oid: ev.oid });
         }
       }
       const sonra = sonraki;
       // Başka boşluk da varsa sıradakini sor; yoksa kaldığı yerden devam
       return bitti('Kaydedildi', () => { if (bosluk()) boslukAc(sonra); else if (sonra === 'siparis') siparisFormu(); else if (sonra === 'durus') durusFormu(); });
+    }
+    if (ekran === 'ekDuzelt') {
+      const x = k.gecmis.find(g => g.tur === 'siparis' && g.id === duzeltHedef); if (!x) return goster('ekAna');
+      ['dzAdet', 'dzFire'].concat(dzCncAlan).forEach(i => $(i).classList.remove('hatali'));
+      const isaret = (i, m) => { $(i).classList.add('hatali'); $(i).focus(); hata('dzHata', m); };
+      const adet = sayi($('dzAdet').value), fire = sayi($('dzFire').value);
+      if (adet === '' || !Number.isInteger(adet) || adet < 0) return isaret('dzAdet', 'Üretilen adedi yazın.');
+      if (fire !== '' && (!Number.isInteger(fire) || fire < 0)) return isaret('dzFire', 'Fire adedi tam sayı olmalı.');
+      if (fire !== '' && fire > adet) return isaret('dzFire', 'Fire adedi üretim adedinden büyük olamaz.');
+      const cnc = !$('dzCnc').hidden, del = sayi($('dzDelik').value), yat = sayi($('dzYatay').value), dik = sayi($('dzDikey').value);
+      if (cnc && (del === '' || !Number.isInteger(del) || del < 0)) return isaret('dzDelik', 'Delik sayısını tam sayı olarak yazın.');
+      if (cnc && yat !== '' && isNaN(yat)) return isaret('dzYatay', 'Yatay mesafe sayı olmalı (ör. 12,5).');
+      if (cnc && dik !== '' && isNaN(dik)) return isaret('dzDikey', 'Dikey mesafe sayı olmalı (ör. 12,5).');
+      const sonuc = $('dzYarim').checked ? 'Yarım bırakıldı' : 'Tamamlandı';
+      const yeni = { adet, fire: fire === '' ? 0 : fire, sonuc, delik: cnc ? del : (x.delik == null ? '' : x.delik), yatay: cnc ? yat : (x.yatay == null ? '' : x.yatay), dikey: cnc ? dik : (x.dikey == null ? '' : x.dikey) };
+      const degisen = ['adet', 'fire', 'sonuc', 'delik', 'yatay', 'dikey'].filter(f => String(x[f] == null ? '' : x[f]) !== String(yeni[f]));
+      if (!degisen.length) return hata('dzHata', 'Hiçbir değer değişmedi.');
+      hata('dzHata', '');
+      olay(k, 'SD', Object.assign({ id: x.id, neden: $('dzNeden').value.trim() }, yeni));
+      Object.assign(x, yeni); x.isaret = [x.isaret, 'Düzeltildi'].filter((v, i, a) => v && a.indexOf(v) === i).join(' · ');
+      return bitti('Sipariş ' + x.no + ' düzeltildi', ozeteDon);
     }
     if (ekran === 'ekNot') {
       const metin = $('nMetin').value.trim();
@@ -921,7 +1059,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
       const s = notSiparisi(k, notHedef); if (!s) return goster('ekAna');
       olay(k, 'SN', { id: s.id, not: metin });
       (s.notlar = s.notlar || []).push({ t: simdi.toISOString(), metin });
-      return bitti('Not eklendi');
+      return bitti('Not eklendi', ozeteDon);
     }
     if (ekran === 'ekEkle') {
       if (!eNeden) return hata('eHata', 'Duruşun nedenini seçin.');
@@ -948,7 +1086,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
       const id = yeniNo('E'), dakika = molaHaric(bas, bit);
       const ev = olay(k, 'DE', { id, neden: eNeden, aciklama: ac, sipId: sip ? sip.id : '', sipNo: sip ? sip.no : '', bas: bas.toISOString(), t: bit.toISOString(), isaret: 'Sonradan elle girildi' },
         { konu: 'Duruş sonradan girildi', aciklama: eNeden + ' ' + bv + '–' + tv + (sip ? ' (sipariş ' + sip.no + ' içinde)' : '') });
-      k.gecmis.push({ tur: 'durus', id, neden: eNeden, sipId: sip ? sip.id : '', sipNo: sip ? sip.no : '', bas: bas.toISOString(), bit: bit.toISOString(), sure: dakika, isaret: 'Sonradan elle girildi', oid: ev.oid });
+      k.gecmis.push({ tur: 'durus', id, neden: eNeden, aciklama: ac, sipId: sip ? sip.id : '', sipNo: sip ? sip.no : '', bas: bas.toISOString(), bit: bit.toISOString(), sure: dakika, isaret: 'Sonradan elle girildi', oid: ev.oid });
       if (sip) sip.bitenDurusDk = (sip.bitenDurusDk || 0) + dakika;
       return bitti('Duruş eklendi · ' + bv + '–' + tv);
     }
