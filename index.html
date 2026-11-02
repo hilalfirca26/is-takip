@@ -172,6 +172,12 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
 .kart.izleme .baslik { font-size: 19px; }
 .kim .izl { font-size: 12px; color: var(--stop); font-weight: 600; }
 .gizle { display: none !important; }
+.liste li.t-bas { background: transparent; border-style: dashed; border-left: 4px solid var(--accent); padding: 6px 14px; }
+.liste li.t-bas .saat { grid-row: auto; }
+.liste li.t-bas .bas { font-weight: 500; color: var(--muted); font-size: 15px; }
+.liste li.t-bas.acikbas .bas { color: var(--ink); font-weight: 600; }
+.liste li.t-bas.acikbas .saat { grid-row: span 2; }
+.liste li.t-durus.ic { margin-left: 18px; }
 </style>
 </head>
 <body>
@@ -241,7 +247,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
     <button class="btn btn-dur-acik" id="bDurusBaslat" type="button">Duruş Başlat</button>
     <button class="link" id="bDurusEkle" type="button">Unutulan bir duruşu sonradan ekle</button>
 
-    <div class="baslik-satir"><h2>Bugün kapanan kayıtlar</h2><button class="link" id="bOzet" type="button">Gün özeti / geçmiş günler</button></div>
+    <div class="baslik-satir"><h2>Bugünün akışı</h2><button class="link" id="bOzet" type="button">Gün özeti / geçmiş günler</button></div>
     <ul class="liste" id="liste"></ul>
   </section>
 
@@ -713,8 +719,29 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
     if (!kimlik) return;
     const bekleyen = new Set(S.kuyruk.map(e => e.oid));
     const bugun = gunAnahtar(Date.now());
-    const g = K().gecmis.filter(x => gunAnahtar(x.bas) === bugun || gunAnahtar(x.bit) === bugun).slice().sort((a, b) => a.bas < b.bas ? 1 : -1);
-    $('liste').innerHTML = g.length ? g.map(x => kayitHtml(x, bekleyen)).join('') : '<p class="bos">Bugün henüz kapanan kayıt yok.</p>';
+    const k = K(), g = k.gecmis.filter(x => gunAnahtar(x.bas) === bugun || gunAnahtar(x.bit) === bugun);
+    // Süren sipariş de akışta "başladı" satırıyla görünür (içindeki duruşlar altına dizilir)
+    if (k.siparis && gunAnahtar(k.siparis.bas) === bugun) g.push(Object.assign({ tur: 'siparis', acik: true, simdi: true, notlar: [] }, k.siparis));
+    $('liste').innerHTML = g.length ? akisHtml(g, bugun, bekleyen) : '<p class="bos">Bugün henüz kayıt yok.</p>';
+  }
+  /** Günün akışı: sipariş başladı → duruşlar → sipariş kapandı, saat sırasıyla (ana ekran ve gün özeti ortak). */
+  function akisHtml(kay, gun, bekleyen) {
+    const ol = [], ms = t => new Date(t).getTime();
+    kay.forEach(x => {
+      if (x.tur === 'siparis') {
+        if (gunAnahtar(x.bas) === gun) ol.push({ t: ms(x.bas), r: 0, h: basHtml(x) });
+        if (!x.acik && x.bit && gunAnahtar(x.bit) === gun) ol.push({ t: ms(x.bit), r: 2, h: kayitHtml(x, bekleyen) });
+      } else ol.push({ t: ms(x.bas), r: 1, h: kayitHtml(x, bekleyen) });
+    });
+    return ol.sort((a, b) => a.t - b.t || a.r - b.r).map(o => o.h).join('');
+  }
+  /** Siparişin başlangıç satırı: ince, tek satır. Sipariş sürüyorsa notu ve "Not ekle" de burada. */
+  function basHtml(x) {
+    if (!x.acik) return '<li class="t-bas"><span class="saat">' + saatYaz(x.bas) + '</span><span class="bas">▶ Sipariş ' + esc(x.no) + ' başladı</span></li>';
+    const notlar = x.notlar && x.notlar.length ? '<span class="acik">Not: ' + esc(x.notlar.map(n => n.metin).join(' · ')) + '</span>' : '';
+    const not = !x.simdi && yazabilir() ? '<span class="islem"><button type="button" class="link" data-not="' + esc(x.id) + '">Not ekle</button></span>' : '';
+    return '<li class="t-bas acikbas"><span class="saat">' + saatYaz(x.bas) + '</span><span class="bas">▶ Sipariş ' + esc(x.no) + ' başladı · devam ediyor</span>' +
+      (notlar || not ? '<span class="det">' + notlar + not + '</span>' : '') + '</li>';
   }
   /** Bir geçmiş kaydının liste satırı (ana ekran ve gün özeti ortak). */
   function kayitHtml(x, bekleyen) {
@@ -724,14 +751,14 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
       if (x.acik) return '<li class="t-siparis"><span class="saat">' + saatYaz(x.bas) + '–…</span><span class="bas">Sipariş ' + esc(x.no) + ' · devam ediyor</span><span class="det">' +
         (x.delik !== '' && x.delik != null ? esc(x.delik) + ' delik' : 'Henüz kapatılmadı') + notlar +
         (yazabilir() ? '<span class="islem"><button type="button" class="link" data-not="' + esc(x.id) + '">Not ekle</button></span>' : '') + '</span></li>';
-      return '<li class="t-siparis"><span class="saat">' + saatYaz(x.bas) + '–' + saatYaz(x.bit) + '</span><span class="bas">Sipariş ' + esc(x.no) +
-        (x.sonuc === 'Yarım bırakıldı' ? ' · yarım bırakıldı' : '') + (x.isaret ? ' · ' + esc(x.isaret) : '') + '</span><span class="det"><span class="mono">' + esc(x.adet) + '</span> adet' +
+      return '<li class="t-siparis"><span class="saat">' + saatYaz(x.bit) + '</span><span class="bas">■ Sipariş ' + esc(x.no) +
+        (x.sonuc === 'Yarım bırakıldı' ? ' yarım bırakıldı' : ' kapandı') + (x.isaret ? ' · ' + esc(x.isaret) : '') + '</span><span class="det"><span class="mono">' + esc(x.adet) + '</span> adet' +
         (Number(x.fire) ? ' · ' + esc(x.fire) + ' fire' : '') + (x.delik !== '' && x.delik != null ? ' · ' + esc(x.delik) + ' delik' : '') +
-        ' · ' + esc(x.brut) + ' dk' + (Number(x.durus) ? ' · ' + esc(x.durus) + ' dk duruş' : '') + bek + notlar +
+        ' · ' + saatYaz(x.bas) + '–' + saatYaz(x.bit) + ' · ' + esc(x.brut) + ' dk' + (Number(x.durus) ? ' · ' + esc(x.durus) + ' dk duruş' : '') + bek + notlar +
         (yazabilir() ? '<span class="islem"><button type="button" class="link" data-not="' + esc(x.id) + '">Not ekle</button>' +
         '<button type="button" class="link" data-duzelt="' + esc(x.id) + '">Düzelt</button></span>' : '') + '</span></li>';
     }
-    return '<li class="t-durus"><span class="saat">' + saatYaz(x.bas) + '–' + (x.acik ? '…' : saatYaz(x.bit)) + '</span><span class="bas">' + esc(x.neden) +
+    return '<li class="t-durus' + (x.sipId ? ' ic' : '') + '"><span class="saat">' + saatYaz(x.bas) + '–' + (x.acik ? '…' : saatYaz(x.bit)) + '</span><span class="bas">' + esc(x.neden) +
       (x.acik ? ' · devam ediyor' : ' · ' + esc(x.sure) + ' dk') + '</span><span class="det">' +
       (x.aciklama ? '<span class="acik">' + esc(x.aciklama) + '</span>' : '') +
       (x.sipId ? 'Sipariş ' + esc(x.sipNo) + ' içinde' : 'Sipariş dışı') + (x.isaret ? ' · ' + esc(x.isaret) : '') + bek + '</span></li>';
@@ -949,7 +976,8 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
     const g = ozetGun, anahtar = gunAnahtar(g), k = K();
     const yerel = k.gecmis.filter(x => gunAnahtar(x.bas) === anahtar || gunAnahtar(x.bit) === anahtar);
     const bilinen = new Set(k.gecmis.map(x => x.id).concat([k.siparis && k.siparis.id, k.durus && k.durus.id].filter(Boolean)));
-    const kay = yerel.concat(uzakListe.filter(x => !bilinen.has(x.id))).sort((a, b) => a.bas < b.bas ? -1 : 1);
+    const kay = yerel.concat(uzakListe.filter(x => !bilinen.has(x.id)));
+    if (k.siparis && gunAnahtar(k.siparis.bas) === anahtar && !kay.some(x => x.id === k.siparis.id)) kay.push(Object.assign({ tur: 'siparis', acik: true, simdi: true, notlar: [] }, k.siparis));
     const sip = kay.filter(x => x.tur === 'siparis' && !x.acik), dur = kay.filter(x => x.tur === 'durus' && !x.acik);
     const top = (l, f) => l.reduce((t, x) => t + (Number(f(x)) || 0), 0);
     const fire = top(sip, x => x.fire);
@@ -957,7 +985,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
       ' · ' + dur.length + ' duruş (' + top(dur, x => x.sure) + ' dk)' : '';
     $('ozToplam').hidden = !kay.length;
     const bekleyen = new Set(S.kuyruk.map(e => e.oid));
-    $('ozListe').innerHTML = kay.length ? kay.map(x => kayitHtml(x, bekleyen)).join('')
+    $('ozListe').innerHTML = kay.length ? akisHtml(kay, anahtar, bekleyen)
       : '<p class="bos">' + (uzakDurum === 'yukleniyor' ? 'Kayıtlar tablodan getiriliyor…' : 'Bu gün için kayıt yok.') + '</p>';
     $('ozAlt').textContent = etiket() + ' · ' + g.toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' }) +
       ({ yukleniyor: ' · tablodan kontrol ediliyor…', tamam: ' · tablo ile güncel', yok: ' · internet yok, sadece bu cihazdaki kayıtlar' }[uzakDurum] || '');
