@@ -167,6 +167,11 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
 .liste .acik { display: block; color: var(--ink); }
 .liste .islem { display: flex; gap: 16px; margin-top: 2px; }
 .ozet-satir { margin: 0; font-size: 15px; background: var(--sunk); border-radius: var(--r); padding: 10px 14px; }
+.kart.izleme { border-color: var(--line); background: var(--sunk); }
+.kart.izleme .etk { color: var(--muted); }
+.kart.izleme .baslik { font-size: 19px; }
+.kim .izl { font-size: 12px; color: var(--stop); font-weight: 600; }
+.gizle { display: none !important; }
 </style>
 </head>
 <body>
@@ -197,6 +202,14 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
   </section>
 
   <section id="ekAna" hidden>
+    <div class="kart izleme" id="kIzleme" hidden>
+      <div class="ust"><span class="etk">İzleme modu</span></div>
+      <div class="baslik" id="kIzlemeBaslik"></div>
+      <div class="bilgi" id="kIzlemeBilgi"></div>
+      <button class="btn btn-ana" id="bIzOzet" type="button">Gün özetini aç</button>
+      <button class="btn btn-ikincil" id="bIzYonetici" type="button">Yönetici girişi (not / düzeltme için)</button>
+      <button class="link" id="bIzBagla" type="button">Bu tableti bu makineye bağla</button>
+    </div>
     <div class="kart dur" id="kDurus" hidden>
       <div class="ust"><span class="etk canli">Duruş devam ediyor</span><span class="bilgi" id="kDurusBas"></span></div>
       <div class="baslik" id="kDurusNeden"></div>
@@ -349,6 +362,12 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
     <p class="hata" id="dzHata" hidden></p>
   </section>
 
+  <section id="ekSifre" hidden>
+    <div><h1 id="sfBaslik">Yönetici şifresi</h1><p class="sub" id="sfAlt"></p></div>
+    <div class="alan"><label for="sfSifre">Şifre<i>*</i></label><input type="password" id="sfSifre" inputmode="numeric" autocomplete="off"></div>
+    <p class="hata" id="sfHata" hidden></p>
+  </section>
+
   <section id="ekNot" hidden>
     <div><h1 id="nBaslik">Not ekle</h1><p class="sub" id="nAlt"></p></div>
     <span class="etiket">Hızlı seçim</span>
@@ -462,7 +481,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
         let j;
         try {
           const r = await fetch(API, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-            body: JSON.stringify({ cihaz: S.cihaz, olaylar: paket }), signal: ctl.signal, redirect: 'follow' });
+            body: JSON.stringify({ cihaz: S.cihaz, olaylar: paket, yonetici: S.yonetici || '' }), signal: ctl.signal, redirect: 'follow' });
           j = await r.json();
         } finally { clearTimeout(zam); }
         if (!j || !j.ok) throw new Error((j && j.hata) || 'Sunucu kaydı kabul etmedi');
@@ -470,6 +489,10 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
         if (!al.size) throw new Error('Sunucu yanıtı boş');
         S.kuyruk = S.kuyruk.filter(e => !al.has(e.oid));
         S.senk = { son: new Date().toISOString(), hata: '' };
+        if ((j.reddedilen || []).length) { // bu cihaz makineye bağlı değil: kayıtlar tabloya yazılmadı
+          toast(j.reddedilen.length + ' kayıt tabloya yazılmadı: bu cihaz makineye bağlı değil');
+          setTimeout(ayarGetir, 300);
+        }
         kaydet();
       }
     } catch (e) {
@@ -497,23 +520,24 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
     if (DEMO) return;
     try {
       const ctl = new AbortController(), zam = setTimeout(() => ctl.abort(), 20000);
-      const r = await fetch(API + '?api=ayarlar', { cache: 'no-store', signal: ctl.signal });
+      const r = await fetch(API + '?api=ayarlar&cihaz=' + encodeURIComponent(S.cihaz), { cache: 'no-store', signal: ctl.signal });
       clearTimeout(zam);
       const a = await r.json();
       if (a && a.bolumler && a.personel) {
         a.alindi = new Date().toISOString();
         S.ayarlar = a; AYAR = a; kaydet();
         if (ekran === 'ekGiris') girisDoldur();
+        if (ekran === 'ekAna') anaAc();
       }
     } catch (e) { /* çevrimdışı: kayıtlı ayarlarla devam */ }
   }
 
   /* ---------- Ekranlar ---------- */
-  const ALT = { ekBaslat: 'Siparişi Başlat', ekKapat: 'Siparişi Kapat', ekDurus: 'Duruşu Başlat', ekBitir: 'Duruşu Bitir', ekBosluk: 'Kaydet ve Devam Et', ekEkle: 'Duruşu Ekle', ekNot: 'Notu Kaydet', ekDuzelt: 'Düzeltmeyi Kaydet' };
+  const ALT = { ekBaslat: 'Siparişi Başlat', ekKapat: 'Siparişi Kapat', ekDurus: 'Duruşu Başlat', ekBitir: 'Duruşu Bitir', ekBosluk: 'Kaydet ve Devam Et', ekEkle: 'Duruşu Ekle', ekNot: 'Notu Kaydet', ekDuzelt: 'Düzeltmeyi Kaydet', ekSifre: 'Onayla' };
   const DUR_EKRAN = { ekDurus: 1, ekBitir: 1, ekEkle: 1 };
   function goster(ad) {
     ekran = ad;
-    ['ekYukle', 'ekGiris', 'ekAna', 'ekBaslat', 'ekKapat', 'ekDurus', 'ekBitir', 'ekBosluk', 'ekEkle', 'ekNot', 'ekOzet', 'ekDuzelt'].forEach(id => $(id).hidden = id !== ad);
+    ['ekYukle', 'ekGiris', 'ekAna', 'ekBaslat', 'ekKapat', 'ekDurus', 'ekBitir', 'ekBosluk', 'ekEkle', 'ekNot', 'ekOzet', 'ekDuzelt', 'ekSifre'].forEach(id => $(id).hidden = id !== ad);
     $('altBar').hidden = !ALT[ad];
     if (ALT[ad]) { $('altOnay').textContent = ALT[ad]; $('altOnay').className = 'btn ' + (DUR_EKRAN[ad] ? 'btn-dur' : 'btn-ana'); }
     $('kimBtn').hidden = !kimlik || ad === 'ekGiris';
@@ -540,6 +564,11 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
     secenek($('gMakine'), mak, m, 'Makine seçin');
   }
   $('gBolum').addEventListener('change', () => bolumDegisti());
+  // Ad seçilince o kişinin her zamanki makinesi gelir; istenirse değiştirilebilir
+  $('gPersonel').addEventListener('change', () => {
+    const v = ((AYAR.varsayilan || {})[$('gBolum').value] || {})[$('gPersonel').value];
+    if (v && [...$('gMakine').options].some(o => o.value === v)) $('gMakine').value = v;
+  });
   $('gDevam').addEventListener('click', () => {
     const bolum = $('gBolum').value, personel = $('gPersonel').value, mv = !$('gMakineAlan').hidden, makine = mv ? $('gMakine').value : '';
     if (!bolum) return hata('gHata', 'Bölüm seçin.');
@@ -554,10 +583,56 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
   $('kimBtn').addEventListener('click', () => { girisDoldur(); goster('ekGiris'); });
 
   /* ---------- Ana ekran ---------- */
-  function anaAc() { $('kimAd').textContent = etiket(); goster('ekAna'); ciz(); }
+  function anaAc() { $('kimAd').textContent = etiket() + (izleme() ? ' · izleme' : ''); goster('ekAna'); ciz(); }
+
+  /* ---------- Tablet kilidi ---------- */
+  /** Makineli bölümde bu cihaz o makineye bağlı değilse yalnızca izlenir (kayıt girilemez). */
+  function izleme() {
+    const y = AYAR.yetki;
+    if (!kimlik || !kimlik.makine || !y || !y.aktif) return false;
+    // Henüz tableti olmayan makinede ilk kayıt bu cihazı otomatik bağlar
+    return (y.kilitli || []).indexOf(kimlik.makine) >= 0 && (y.bu || []).indexOf(kimlik.makine) < 0;
+  }
+  const yazabilir = () => !izleme() || !!S.yonetici;
+  async function sifreHash(s) {
+    const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('hf-istakip|' + s));
+    return Array.from(new Uint8Array(b)).map(x => x.toString(16).padStart(2, '0')).join('');
+  }
+  let sifreAmac = '';
+  function sifreAc(amac) {
+    sifreAmac = amac;
+    $('sfBaslik').textContent = amac === 'bagla' ? 'Tableti ' + kimlik.makine + ' makinesine bağla' : 'Yönetici girişi';
+    $('sfAlt').textContent = amac === 'bagla' ? 'Bu tablet ' + kimlik.makine + ' için kayıt cihazı olur; o makinenin önceki tabletinin yetkisi kalkar. İnternet gerekir.'
+      : 'Şifreyle bu cihazdan kayıtlara not eklenebilir ve kapanmış siparişler düzeltilebilir. Sipariş ve duruş yine sadece makinenin tabletinden girilir.';
+    $('sfSifre').value = ''; hata('sfHata', ''); goster('ekSifre'); $('sfSifre').focus();
+  }
+  $('bIzOzet').addEventListener('click', () => ozetAc(null));
+  $('bIzYonetici').addEventListener('click', () => sifreAc('giris'));
+  $('bIzBagla').addEventListener('click', () => sifreAc('bagla'));
+  async function sifreOnayla() {
+    const s = $('sfSifre').value.trim();
+    if (!s) return hata('sfHata', 'Şifreyi yazın.');
+    $('altOnay').disabled = true;
+    try {
+      const h = await sifreHash(s);
+      if (sifreAmac === 'bagla') {
+        const r = await fetch(API, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ api: 'bagla', cihaz: S.cihaz, makine: kimlik.makine, h }) });
+        const j = await r.json();
+        if (!j.ok) return hata('sfHata', j.hata || 'Bağlanamadı.');
+        AYAR.yetki = j.yetki; S.ayarlar = AYAR; S.yonetici = h; kaydet();
+        toast('Tablet ' + kimlik.makine + ' makinesine bağlandı'); anaAc();
+      } else {
+        const r = await fetch(API + '?api=yonetici&h=' + h, { cache: 'no-store' }); const j = await r.json();
+        if (!j.ok) return hata('sfHata', 'Şifre yanlış.');
+        S.yonetici = h; kaydet(); toast('Yönetici girişi yapıldı'); anaAc();
+      }
+    } catch (e) { hata('sfHata', 'İnternete bağlanılamadı. Bağlantıyı kontrol edip tekrar deneyin.'); }
+    finally { $('altOnay').disabled = false; }
+  }
 
   /** Bugün vardiya başından şu ana kadar hiçbir kayda düşmeyen ilk aralık (aradaki boşluklar dahil). */
   function bosluk() {
+    if (izleme()) return null;
     const k = K(), now = new Date(), vb = saatte(now, vd().basla), ve = saatte(now, vd().bitis);
     const ust = (now < ve ? now : ve).getTime();
     if (!(ust > vb.getTime())) return null;
@@ -588,6 +663,18 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
 
   function ciz() {
     if (!kimlik) return;
+    const izl = izleme();
+    $('kIzleme').hidden = !izl;
+    ['bSipBaslat', 'bDurusBaslat', 'bDurusEkle', 'liste'].forEach(id => $(id).classList.toggle('gizle', izl));
+    $('liste').previousElementSibling.classList.toggle('gizle', izl);
+    if (izl) {
+      ['kSiparis', 'kDurus', 'kBosluk'].forEach(id => $(id).hidden = true);
+      $('kIzlemeBaslik').textContent = kimlik.makine + ' · ' + kimlik.personel;
+      $('kIzlemeBilgi').textContent = 'Bu cihaz ' + kimlik.makine + ' makinesine bağlı değil. Sipariş ve duruşlar makinenin kendi tabletinden girilir; buradan o günlerin kayıtlarını görebilirsiniz.' +
+        (S.yonetici ? ' Yönetici girişi yapıldı: kayıtlara not ekleyip düzeltebilirsiniz.' : '');
+      $('bIzYonetici').hidden = !!S.yonetici;
+      return;
+    }
     const k = K(), s = k.siparis, d = k.durus, b = bosluk();
     $('kSiparis').hidden = !s; $('bSipBaslat').hidden = !!s;
     $('kDurus').hidden = !d; $('bDurusBaslat').hidden = !!d;
@@ -636,13 +723,13 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
       const notlar = x.notlar && x.notlar.length ? '<span class="acik">Not: ' + esc(x.notlar.map(n => n.metin).join(' · ')) + '</span>' : '';
       if (x.acik) return '<li class="t-siparis"><span class="saat">' + saatYaz(x.bas) + '–…</span><span class="bas">Sipariş ' + esc(x.no) + ' · devam ediyor</span><span class="det">' +
         (x.delik !== '' && x.delik != null ? esc(x.delik) + ' delik' : 'Henüz kapatılmadı') + notlar +
-        '<span class="islem"><button type="button" class="link" data-not="' + esc(x.id) + '">Not ekle</button></span></span></li>';
+        (yazabilir() ? '<span class="islem"><button type="button" class="link" data-not="' + esc(x.id) + '">Not ekle</button></span>' : '') + '</span></li>';
       return '<li class="t-siparis"><span class="saat">' + saatYaz(x.bas) + '–' + saatYaz(x.bit) + '</span><span class="bas">Sipariş ' + esc(x.no) +
         (x.sonuc === 'Yarım bırakıldı' ? ' · yarım bırakıldı' : '') + (x.isaret ? ' · ' + esc(x.isaret) : '') + '</span><span class="det"><span class="mono">' + esc(x.adet) + '</span> adet' +
         (Number(x.fire) ? ' · ' + esc(x.fire) + ' fire' : '') + (x.delik !== '' && x.delik != null ? ' · ' + esc(x.delik) + ' delik' : '') +
         ' · ' + esc(x.brut) + ' dk' + (Number(x.durus) ? ' · ' + esc(x.durus) + ' dk duruş' : '') + bek + notlar +
-        '<span class="islem"><button type="button" class="link" data-not="' + esc(x.id) + '">Not ekle</button>' +
-        '<button type="button" class="link" data-duzelt="' + esc(x.id) + '">Düzelt</button></span></span></li>';
+        (yazabilir() ? '<span class="islem"><button type="button" class="link" data-not="' + esc(x.id) + '">Not ekle</button>' +
+        '<button type="button" class="link" data-duzelt="' + esc(x.id) + '">Düzelt</button></span>' : '') + '</span></li>';
     }
     return '<li class="t-durus"><span class="saat">' + saatYaz(x.bas) + '–' + (x.acik ? '…' : saatYaz(x.bit)) + '</span><span class="bas">' + esc(x.neden) +
       (x.acik ? ' · devam ediyor' : ' · ' + esc(x.sure) + ' dk') + '</span><span class="det">' +
@@ -953,6 +1040,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
   function bitti(mesaj, sonra) { kaydet(); toast(mesaj); goster('ekAna'); ciz(); if (sonra) sonra(); }
 
   function onayla() {
+    if (ekran === 'ekSifre') return void sifreOnayla();
     const k = K(), simdi = new Date();
     if (ekran === 'ekBaslat') {
       bAlan.forEach(id => $(id).classList.remove('hatali'));
