@@ -1415,7 +1415,8 @@ body.tv h1 { font-size: 30px; }
         (k.siparis ? '<div class="pk-kim">Sipariş ' + esc(k.siparis.no) + (k.siparis.sipAdet ? ' · ' + esc(k.siparis.sipAdet) + ' adet' : '') + '</div>' : '');
     } else if (k.durum === 'calisiyor') {
       govde = '<div class="pk-neden">Sipariş ' + esc(k.siparis.no) + (k.siparis.sipAdet ? ' · ' + esc(k.siparis.sipAdet) + ' adet' : '') + '</div>' +
-        '<div class="pk-kim">Başlangıç ' + saatYaz(k.siparis.bas) + (k.siparis.dunden ? ' <span class="pk-etiket">dünden açık</span>' : '') + '</div>';
+        '<div class="pk-kim">Bu siparişin başlama saati ' + (k.siparis.dunden ? new Date(k.siparis.bas).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' }) + ' ' : '') + saatYaz(k.siparis.bas) +
+        ' · ' + dkYaz((Date.now() - new Date(k.siparis.bas).getTime()) / 60000) + ' geçti' + (k.siparis.dunden ? ' <span class="pk-etiket">dünden açık</span>' : '') + '</div>';
     } else if (k.durum === 'bosta') {
       govde = '<div class="pk-acik">Açık sipariş ya da duruş yok.</div>';
     } else govde = '<div class="pk-acik">Bugün kayıt girilmedi.</div>';
