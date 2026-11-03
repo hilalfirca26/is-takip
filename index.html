@@ -16,6 +16,7 @@
   --bg: #eef2f0; --surface: #ffffff; --sunk: #f6f8f7; --ink: #15201d; --muted: #586763;
   --line: #d3dcd8; --accent: #0d6b57; --accent-ink: #ffffff; --accent-soft: #e0efe9;
   --stop: #a85406; --stop-ink: #ffffff; --stop-soft: #fcefdf; --danger: #b42318; --danger-soft: #fdeceb;
+  --mola: #2b5fa8; --mola-soft: #e5eefa;
   --font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --mono: ui-monospace, "SFMono-Regular", "Roboto Mono", Menlo, Consolas, monospace;
   --r: 10px;
@@ -23,11 +24,11 @@
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
   --bg: #0e1513; --surface: #16201d; --sunk: #111a17; --ink: #e4ece9; --muted: #93a39e;
   --line: #2a3733; --accent: #3db394; --accent-ink: #04201a; --accent-soft: #163a31;
-  --stop: #f2a54e; --stop-ink: #2a1803; --stop-soft: #33230f; --danger: #f97066; --danger-soft: #3a1714; color-scheme: dark } }
+  --stop: #f2a54e; --stop-ink: #2a1803; --stop-soft: #33230f; --danger: #f97066; --danger-soft: #3a1714; --mola: #8ab4f0; --mola-soft: #172538; color-scheme: dark } }
 :root[data-theme="dark"] {
   --bg: #0e1513; --surface: #16201d; --sunk: #111a17; --ink: #e4ece9; --muted: #93a39e;
   --line: #2a3733; --accent: #3db394; --accent-ink: #04201a; --accent-soft: #163a31;
-  --stop: #f2a54e; --stop-ink: #2a1803; --stop-soft: #33230f; --danger: #f97066; --danger-soft: #3a1714; color-scheme: dark }
+  --stop: #f2a54e; --stop-ink: #2a1803; --stop-soft: #33230f; --danger: #f97066; --danger-soft: #3a1714; --mola: #8ab4f0; --mola-soft: #172538; color-scheme: dark }
 
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
@@ -223,6 +224,13 @@ body.tv h1 { font-size: 30px; }
 .liste .kimad { font-weight: 500; color: var(--muted); }
 .yeni-gecis { border-top: 1px dashed var(--line); padding-top: 12px; display: flex; flex-direction: column; gap: 8px; }
 .yeni-gecis .sub { margin: 0; }
+
+/* Mola / yemek / temizlik: sayaçlar durur */
+.mola-bant { margin: 0; background: var(--mola-soft); color: var(--ink); border: 1px solid var(--mola); border-left-width: 6px; border-radius: var(--r); padding: 10px 14px; font-size: 15px; }
+.mola-bant b { color: var(--mola); }
+.sayac.durdu { color: var(--mola) !important; opacity: .8; }
+.pk.pk-mola { border-top-color: var(--mola); } .pk.pk-mola .pk-rozet { background: var(--mola-soft); color: var(--mola); }
+body.tv .mola-bant { font-size: 20px; }
 </style>
 </head>
 <body>
@@ -254,6 +262,7 @@ body.tv h1 { font-size: 30px; }
   </section>
 
   <section id="ekAna" hidden>
+    <p class="mola-bant" id="kMola" hidden></p>
     <div class="kart izleme" id="kIzleme" hidden>
       <div class="ust"><span class="etk">İzleme modu</span></div>
       <div class="baslik" id="kIzlemeBaslik"></div>
@@ -313,6 +322,7 @@ body.tv h1 { font-size: 30px; }
         <button class="btn btn-ikincil" id="pnCik" type="button">Çık</button>
       </div>
     </div>
+    <p class="mola-bant" id="pnMola" hidden></p>
     <p class="pn-ozet" id="pnOzet"></p>
     <div class="pn-izgara" id="pnMakine"></div>
     <h2 id="pnIstBaslik" hidden>İstasyonlar (makinesiz bölümler · bugün kaydı olanlar)</h2>
@@ -372,6 +382,7 @@ body.tv h1 { font-size: 30px; }
   <section id="ekDurus" hidden>
     <div><h1>Duruş başlat</h1><p class="sub" id="dAlt"></p></div>
     <span class="etiket" id="dNedenEt">Neden durdu?<i>*</i></span>
+    <p class="mola-bant" id="dMola" hidden></p>
     <div class="nedenler" id="dNedenler" role="group" aria-labelledby="dNedenEt"></div>
     <div class="alan"><label for="dAcik" id="dAcikEt">Açıklama</label><input id="dAcik" autocomplete="off" placeholder="İsteğe bağlı"></div>
     <p class="hata" id="dHata" hidden></p>
@@ -540,7 +551,9 @@ body.tv h1 { font-size: 30px; }
   /** O günün düşülecek aralıkları: molalar + standart temizlik (Cuma ayrı). */
   const gunMolalari = g => { const t = vd().temizlik || {}; return (vd().molalar || []).concat((new Date(g).getDay() === 5 ? t.cuma : t.diger) || []); };
   /** bas–bit arası dakika, molalar ve standart temizlik düşülerek (sunucuyla aynı kural). */
-  function molaHaric(bas, bit) {
+  function molaHaric(bas, bit) { return dk(molaHaricMs(bas, bit)); }
+  /** Aynısı, milisaniye (ekrandaki sayaçlar molada durur). */
+  function molaHaricMs(bas, bit) {
     bas = new Date(bas); bit = new Date(bit);
     let ms = bit - bas;
     if (ms <= 0) return 0;
@@ -550,8 +563,14 @@ body.tv h1 { font-size: 30px; }
         if (ust > alt) ms -= ust - alt;
       });
     }
-    return dk(ms);
+    return Math.max(0, ms);
   }
+  /** Bugünün mola / temizlik aralıkları adlarıyla; 30 dk ve üstü mola = yemek. */
+  const molaAdi = m => (saatte(0, m[1]) - saatte(0, m[0]) >= 30 * 60000 ? 'Yemek molası' : 'Çay molası');
+  const gunMolaListe = g => { const t = vd().temizlik || {};
+    return (vd().molalar || []).map(m => ({ bas: m[0], bit: m[1], ad: molaAdi(m) }))
+      .concat(((new Date(g).getDay() === 5 ? t.cuma : t.diger) || []).map(m => ({ bas: m[0], bit: m[1], ad: 'Temizlik' }))); };
+  const molaSimdi = liste => { const n = new Date(); return (liste || []).find(m => n >= saatte(n, m.bas) && n < saatte(n, m.bit)) || null; };
 
   /* ---------- Gönderim ---------- */
   let senkronda = false;
@@ -876,15 +895,18 @@ body.tv h1 { font-size: 30px; }
   function tik() {
     if (Date.now() - sonOto > 30000) { sonOto = Date.now(); if (otoKapat()) return ciz(); }
     if (!kimlik || ekran === 'ekGiris' || ekran === 'ekYukle') return;
-    const k = K();
+    const k = K(), mola = molaSimdi(gunMolaListe(new Date()));
+    $('kMola').hidden = !mola;
+    if (mola) $('kMola').innerHTML = '<b>' + mola.ad + ' (' + mola.bas + '–' + mola.bit + ')</b> · Süreler mola bitene kadar durdu, kendiliğinden devam eder. Mola için duruş girmeyin.';
+    $('kSipSayac').classList.toggle('durdu', !!mola); $('kDurusSayac').classList.toggle('durdu', !!mola);
     if (k.siparis) {
-      $('kSipSayac').textContent = sure(gecen(k.siparis.bas));
+      $('kSipSayac').textContent = sure(molaHaricMs(k.siparis.bas, Date.now()));
       $('kSipBilgi').innerHTML = 'Bu siparişteki duruş: <b>' + durusToplam(k) + ' dk</b>';
       if (ekran === 'ekAna') sipUyariGoster(k.siparis);
     }
     if (k.durus) {
-      $('kDurusSayac').textContent = sure(gecen(k.durus.bas));
-      const sinir = (AYAR.uyari || {})[k.durus.neden] || 0, g = dk(gecen(k.durus.bas));
+      $('kDurusSayac').textContent = sure(molaHaricMs(k.durus.bas, Date.now()));
+      const sinir = (AYAR.uyari || {})[k.durus.neden] || 0, g = molaHaric(k.durus.bas, Date.now());
       const asim = sinir && g > sinir;
       $('kDurus').classList.toggle('asim', !!asim);
       $('kDurusAsim').hidden = !asim;
@@ -1039,6 +1061,9 @@ body.tv h1 { font-size: 30px; }
     $('dAcik').value = ''; $('dAcik').classList.remove('hatali'); acikZorunlu('dAcikEt', 'dAcik', false);
     const s = K().siparis;
     $('dAlt').textContent = s ? 'Sipariş ' + s.no + ' içinde · ' + etiket() : 'Sipariş dışı · ' + etiket();
+    const mola = molaSimdi(gunMolaListe(new Date()));
+    $('dMola').hidden = !mola;
+    if (mola) $('dMola').textContent = 'Şu an ' + mola.ad.toLocaleLowerCase('tr-TR') + ' (' + mola.bas + '–' + mola.bit + '). Mola süresi zaten düşülüyor; mola için duruş girmeyin. Molada makine arızalandıysa ya da başka bir sebep varsa devam edin.';
     hata('dHata', ''); goster('ekDurus');
   }
   nedenSecici('dNedenler', n => { durusNeden = n; acikZorunlu('dAcikEt', 'dAcik', n === 'DİĞER'); if (n === 'DİĞER') $('dAcik').focus(); });
@@ -1189,7 +1214,7 @@ body.tv h1 { font-size: 30px; }
   $('btOnce').addEventListener('change', () => { $('btSaatAlan').hidden = false; $('btSaat').focus(); });
   $('bDurusBitir').addEventListener('click', () => {
     const k = K(), d = k.durus; if (!d) return;
-    const sinir = (AYAR.uyari || {})[d.neden] || 0, g = dk(gecen(d.bas));
+    const sinir = (AYAR.uyari || {})[d.neden] || 0, g = molaHaric(d.bas, Date.now());
     if (sinir && g > sinir) {
       document.querySelectorAll('input[name="btSecim"]').forEach(r => r.checked = false);
       $('btSaat').value = ''; $('btSaatAlan').hidden = true; hata('btHata', '');
@@ -1197,7 +1222,7 @@ body.tv h1 { font-size: 30px; }
       $('btUyari').textContent = 'Duruş ' + g + ' dakikadır açık. Bu neden için uyarı sınırı ' + sinir + ' dk. Gerçekten şimdi mi bitti?';
       return goster('ekBitir');
     }
-    const m = sure(gecen(d.bas));
+    const m = sure(molaHaricMs(d.bas, Date.now()));
     durusKapatYerel(k, new Date(), '', null, null);
     toast('Duruş bitirildi · ' + m); ciz();
   });
@@ -1437,7 +1462,7 @@ body.tv h1 { font-size: 30px; }
   }
 
   /* ---------- Üretim paneli ---------- */
-  let panelVeri = null, panelZam = null, panelHata = '', wakeLock = null;
+  let panelVeri = null, panelZam = null, panelHata = '', wakeLock = null, panelMola = null;
   async function panelGetir(h) {
     if (DEMO) return demoPanel();
     try {
@@ -1493,7 +1518,10 @@ body.tv h1 { font-size: 30px; }
         (k.nabiz.kuyruk ? ' · <span class="kotu">' + k.nabiz.kuyruk + ' kayıt gönderilmeyi bekliyor</span>' : '');
     } else if (k.durum !== 'kayityok') tablet = 'Tablet sinyali yok (eski sürüm ya da kapalı)';
     const son = k.sonKayit ? 'Son kayıt ' + saatYaz(k.sonKayit) + (gunAnahtar(k.sonKayit) !== gunAnahtar(Date.now()) ? ' (' + new Date(k.sonKayit).toLocaleDateString('tr-TR') + ')' : '') : '';
-    return '<div role="button" tabindex="0" data-anahtar="' + esc(k.anahtar || '') + '" data-ad="' + esc(k.ad) + '" class="pk ' + k.durum + (k.durus && k.durus.asildi ? ' pk-uyari' : '') + '"><div class="pk-ust"><b>' + esc(k.ad) + '</b><span class="pk-rozet">● ' + DURUM_AD[k.durum] + '</span></div>' +
+    // Mola / yemek / temizlik sırasında çalışan, duran ya da boştaki kartlar "molada" görünür (kayıtlar sürer, süre sayılmaz)
+    const molada = panelMola && (k.durum === 'calisiyor' || k.durum === 'duruyor' || k.durum === 'bosta');
+    const rozet = molada ? (panelMola.ad === 'Yemek molası' ? 'YEMEKTE' : panelMola.ad === 'Temizlik' ? 'TEMİZLİK' : 'MOLADA') : DURUM_AD[k.durum];
+    return '<div role="button" tabindex="0" data-anahtar="' + esc(k.anahtar || '') + '" data-ad="' + esc(k.ad) + '" class="pk ' + k.durum + (molada ? ' pk-mola' : '') + (k.durus && k.durus.asildi && !molada ? ' pk-uyari' : '') + '"><div class="pk-ust"><b>' + esc(k.ad) + '</b><span class="pk-rozet">● ' + rozet + '</span></div>' +
       '<div class="pk-kim">' + esc(k.tip === 'makine' ? (k.personel || '—') : k.bolum) + '</div>' + govde + sure +
       '<div class="pk-alt">' + [son, tablet].filter(Boolean).join(' · ') + '</div></div>';
   }
@@ -1503,6 +1531,10 @@ body.tv h1 { font-size: 30px; }
     const mak = v.kartlar.filter(k => k.tip === 'makine'), ist = v.kartlar.filter(k => k.tip !== 'makine');
     const say = d => v.kartlar.filter(k => k.durum === d).length;
     const adet = v.kartlar.reduce((t, k) => t + (Number(k.adet) || 0), 0);
+    const mola = molaSimdi(v.molaListe || gunMolaListe(new Date()));
+    $('pnMola').hidden = !mola;
+    if (mola) $('pnMola').innerHTML = '<b>Şu an ' + mola.ad.toLocaleLowerCase('tr-TR') + ' (' + mola.bas + '–' + mola.bit + ')</b> · Süreler sayılmıyor.';
+    panelMola = mola;
     $('pnOzet').innerHTML = '<span>Çalışıyor <b>' + say('calisiyor') + '</b></span><span>Duruyor <b>' + say('duruyor') + '</b></span><span>Boşta <b>' + say('bosta') + '</b></span>' +
       '<span>Kayıt yok <b>' + say('kayityok') + '</b></span><span>Bugün kapanan <b>' + adet + '</b> adet</span><span>Planlanan (şu ana kadar) <b>' + dkYaz(v.planSimdi) + '</b></span>';
     $('pnMakine').innerHTML = mak.map(panelKart).join('') || '<p class="bos">Makine listesi boş.</p>';
