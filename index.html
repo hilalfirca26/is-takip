@@ -745,6 +745,14 @@ body.tv h1 { font-size: 30px; }
     if (k.durus) ekle(k.durus.bas, now);
     (k.aciklanan || []).forEach(x => ekle(x.bas, x.bit));
     if (k.bosNot) ekle(vb, k.bosNot); // eski sürümden kalan işaret
+    // Aynı makinede bu tablette çalışan diğer operatörlerin kayıtları: makine boş değildi, yeni gelene sorulmaz
+    // ("başka makinede çalıştım" boşluk açıklaması hariç: o saatlerde makinede kimse yoktu)
+    if (k.kim.makine) Object.keys(S.kisiler).forEach(a => {
+      const o = S.kisiler[a]; if (o === k || !o.kim || o.kim.bolum !== k.kim.bolum || o.kim.makine !== k.kim.makine) return;
+      o.gecmis.forEach(g => { if (!(g.tur === 'durus' && g.neden === 'BAŞKA MAKİNEDE ÇALIŞTIM')) ekle(g.bas, g.bit); });
+      if (o.siparis) ekle(o.siparis.bas, now);
+      if (o.durus && o.durus.neden !== 'BAŞKA MAKİNEDE ÇALIŞTIM') ekle(o.durus.bas, now);
+    });
     ar.sort((a, b) => a[0] - b[0]);
     const esik = AYAR.esik || 10;
     const dene = (a, b) => {
@@ -957,8 +965,10 @@ body.tv h1 { font-size: 30px; }
     });
     if (onceki && (!$('sAdet').value || sAdetOto)) {
       $('sAdet').value = onceki.kalan; sAdetOto = true;
-      $('sAdetIpucu').textContent = 'Bu sipariş ' + new Date(onceki.bit).toLocaleDateString('tr-TR') + ' ' + saatYaz(onceki.bit) + (kimdi && kimdi !== kimlik.personel ? ' · ' + kimdi + ' tarafından' : '') +
-        ' yarım bırakılmış; kalan ' + onceki.kalan + ' adet yazıldı. Farklıysa değiştirin.';
+      const bugunMu = gunAnahtar(onceki.bit) === gunAnahtar(Date.now());
+      $('sAdetIpucu').textContent = 'Bu sipariş ' + (bugunMu ? 'bugün ' : new Date(onceki.bit).toLocaleDateString('tr-TR') + ' ') + saatYaz(onceki.bit) + '’de' +
+        (kimdi && kimdi !== kimlik.personel ? ' ' + kimdi + ' tarafından' : '') + ' yarım bırakıldı: ' +
+        (onceki.sipAdet !== '' && onceki.sipAdet != null ? onceki.sipAdet + ' adetin ' + onceki.adet + ' adedi yapıldı, kalan ' : 'kalan ') + onceki.kalan + ' adet yazıldı. Farklıysa değiştirin.';
       $('sAdetIpucu').hidden = false;
     } else if (!onceki && sAdetOto) { $('sAdet').value = ''; sAdetOto = false; $('sAdetIpucu').hidden = true; }
   });
