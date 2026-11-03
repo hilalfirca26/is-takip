@@ -422,9 +422,9 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
     personel: {},  // isimler herkese açık sayfada durmasın diye tablodan gelir
     makineler: { 'CNC MAKİNE': ['HF-KRL-01', 'HF-SRT-01', 'HF-DRC-02', 'HF-CYL-01', 'HF-CYL-02', 'HF-CYL-03', 'HF-CYL-04', 'HF-PNL-01', 'HF-PNL-02', 'HF-PNL-03'] },
     nedenler: ['TEMİZLİK', 'AYAR', 'ARIZA', 'MALZEME BEKLEME', 'BOŞTA / SİPARİŞ YOK', 'KİŞİSEL İHTİYAÇ', 'GEÇ AÇILIŞ', 'PROGRAM / ÇİZİM',
-      'TEL / SARF DEĞİŞİMİ', 'ELEKTRİK / KOMPRESÖR', 'BAKIM', 'TOPLANTI', 'BAŞKA MAKİNE AYAR', 'BAŞKA MAKİNEDE ÇALIŞTIM', 'BAŞKA MAKİNE ARIZA', 'DİĞER'],
+      'TEL / SARF DEĞİŞİMİ', 'ELEKTRİK / KOMPRESÖR', 'BAKIM', 'TOPLANTI', 'BAŞKA MAKİNE AYAR', 'BAŞKA MAKİNEDE ÇALIŞTIM', 'BAŞKA MAKİNE ARIZA', 'KALIP DEĞİŞTİRME', 'SENSÖR DEĞİŞTİRME', 'PAH KIRMA', 'DİĞER'],
     uyari: { 'TEMİZLİK': 30, 'AYAR': 120, 'ARIZA': 120, 'MALZEME BEKLEME': 60, 'BOŞTA / SİPARİŞ YOK': 240, 'KİŞİSEL İHTİYAÇ': 30, 'GEÇ AÇILIŞ': 30,
-      'PROGRAM / ÇİZİM': 150, 'TEL / SARF DEĞİŞİMİ': 60, 'ELEKTRİK / KOMPRESÖR': 60, 'BAKIM': 180, 'TOPLANTI': 60, 'BAŞKA MAKİNE AYAR': 120, 'BAŞKA MAKİNEDE ÇALIŞTIM': 240, 'BAŞKA MAKİNE ARIZA': 120, 'DİĞER': 60 },
+      'PROGRAM / ÇİZİM': 150, 'TEL / SARF DEĞİŞİMİ': 60, 'ELEKTRİK / KOMPRESÖR': 60, 'BAKIM': 180, 'TOPLANTI': 60, 'BAŞKA MAKİNE AYAR': 120, 'BAŞKA MAKİNEDE ÇALIŞTIM': 240, 'BAŞKA MAKİNE ARIZA': 120, 'KALIP DEĞİŞTİRME': 120, 'SENSÖR DEĞİŞTİRME': 60, 'PAH KIRMA': 60, 'DİĞER': 60 },
     esik: 10,
     vardiya: { basla: '08:00', bitis: '18:00', molalar: [['10:15', '10:30'], ['12:00', '12:35'], ['15:45', '16:00']],
       temizlik: { diger: [['17:45', '18:00']], cuma: [['17:30', '18:00']] } }
@@ -578,10 +578,15 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
     secenek($('gMakine'), mak, m, 'Makine seçin');
   }
   $('gBolum').addEventListener('change', () => bolumDegisti());
-  // Ad seçilince o kişinin her zamanki makinesi gelir; istenirse değiştirilebilir
+  // Ad seçilince makine kendiliğinden gelir; istenirse değiştirilebilir.
+  // Tablet bir makineye bağlıysa o makine gelir (başka makineye geçen operatör de kendi adıyla girer);
+  // bağlı değilse kişinin her zamanki makinesi.
   $('gPersonel').addEventListener('change', () => {
-    const v = ((AYAR.varsayilan || {})[$('gBolum').value] || {})[$('gPersonel').value];
-    if (v && [...$('gMakine').options].some(o => o.value === v)) $('gMakine').value = v;
+    const var_ = m => m && [...$('gMakine').options].some(o => o.value === m);
+    const kisi = ((AYAR.varsayilan || {})[$('gBolum').value] || {})[$('gPersonel').value];
+    const y = AYAR.yetki || {}, bu = (y.aktif && y.bu || []).filter(var_);
+    const v = bu.length ? (bu.indexOf(kisi) >= 0 ? kisi : bu[0]) : kisi;
+    if (var_(v)) $('gMakine').value = v;
   });
   $('gDevam').addEventListener('click', () => {
     const bolum = $('gBolum').value, personel = $('gPersonel').value, mv = !$('gMakineAlan').hidden, makine = mv ? $('gMakine').value : '';
