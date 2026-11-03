@@ -1048,7 +1048,7 @@ body.tv h1 { font-size: 30px; }
   $('bsYeniGectim').addEventListener('click', () => {
     const k = K(), b = bosluk(), simdi = new Date(); if (!b) return goster('ekAna');
     const bit = b.sona ? simdi : b.bit;
-    olay(k, 'NOT', {}, { konu: 'Makineye sonradan geçildi', aciklama: k.kim.personel + ' ' + saatYaz(bit) + ' itibarıyla ' + (k.kim.makine || k.kim.bolum) + ' için kayda başladı; ' +
+    olay(k, 'NOT', { gecis: bit.toISOString() }, { konu: 'Makineye sonradan geçildi', aciklama: k.kim.personel + ' ' + saatYaz(bit) + ' itibarıyla ' + (k.kim.makine || k.kim.bolum) + ' için kayda başladı; ' +
       saatYaz(b.bas) + '–' + saatYaz(bit) + ' (' + b.dk + ' dk) bu kişiye yazılmadı, o saatlerde makine kayıtsız.' + ($('bsAcik').value.trim() ? ' Not: ' + $('bsAcik').value.trim() : '') });
     (k.aciklanan = k.aciklanan || []).push({ bas: b.bas.toISOString(), bit: bit.toISOString() });
     const sonra = sonraki;
