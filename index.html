@@ -179,6 +179,45 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
 .liste li.t-bas.acikbas .saat { grid-row: span 2; }
 .liste li.t-durus.ic { margin-left: 18px; }
 .kalan-yazi { color: var(--ink); font-weight: 600; margin-top: -4px; }
+
+/* ---------- Üretim paneli ---------- */
+.panel-gir { align-self: center; margin-top: 8px; font-size: 14px; color: var(--muted); }
+body.panel-acik main.in, body.panel-acik .top .in { max-width: 1500px; }
+.pn-ust { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+.pn-dugme { display: flex; gap: 8px; }
+.pn-dugme .btn { width: auto; min-height: 40px; padding: 8px 14px; font-size: 14px; }
+.pn-ozet { margin: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.pn-ozet span { background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; font-size: 14px; }
+.pn-ozet b { font-variant-numeric: tabular-nums; }
+.pn-izgara { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.pk { background: var(--surface); border: 1px solid var(--line); border-top: 6px solid var(--line); border-radius: var(--r); padding: 12px 14px;
+  display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.pk-ust { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.pk-ust b { font-size: 18px; overflow-wrap: anywhere; }
+.pk-rozet { font-size: 12px; font-weight: 700; letter-spacing: .04em; padding: 3px 8px; border-radius: 999px; white-space: nowrap; }
+.pk-kim { font-size: 14px; color: var(--muted); overflow-wrap: anywhere; }
+.pk-neden { font-weight: 700; font-size: 16px; }
+.pk-acik { font-size: 14px; }
+.pk-sure { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; background: var(--sunk); border-radius: 8px; padding: 6px 8px; }
+.pk-sure div { display: flex; flex-direction: column; font-size: 12px; color: var(--muted); }
+.pk-sure b { font-size: 16px; color: var(--ink); font-variant-numeric: tabular-nums; }
+.pk-alt { font-size: 12px; color: var(--muted); }
+.pk-alt .kotu { color: var(--danger); font-weight: 600; }
+.pk-etiket { display: inline-block; font-size: 12px; font-weight: 600; color: var(--danger); background: var(--danger-soft); border-radius: 6px; padding: 1px 6px; }
+.pk.calisiyor { border-top-color: var(--accent); } .pk.calisiyor .pk-rozet { background: var(--accent-soft); color: var(--accent); }
+.pk.duruyor { border-top-color: var(--danger); } .pk.duruyor .pk-rozet { background: var(--danger-soft); color: var(--danger); }
+.pk.bosta { border-top-color: var(--stop); } .pk.bosta .pk-rozet { background: var(--stop-soft); color: var(--stop); }
+.pk.kayityok { opacity: .7; } .pk.kayityok .pk-rozet { background: var(--sunk); color: var(--muted); }
+.pk.pk-uyari { animation: pkYanip 1.4s ease-in-out infinite; }
+@keyframes pkYanip { 50% { box-shadow: 0 0 0 4px var(--danger-soft); border-color: var(--danger); } }
+@media (prefers-reduced-motion: reduce) { .pk.pk-uyari { animation: none; border-color: var(--danger); } }
+/* TV / tam ekran */
+body.tv .top, body.tv .alt-bar, body.tv #pnNot, body.tv .pn-dugme #pnCik { display: none; }
+body.tv main.in { max-width: none; padding-block: 16px; }
+body.tv .pn-izgara { grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; }
+body.tv .pk-ust b { font-size: 26px; } body.tv .pk-rozet { font-size: 16px; } body.tv .pk-neden { font-size: 22px; }
+body.tv .pk-kim, body.tv .pk-acik { font-size: 18px; } body.tv .pk-sure b { font-size: 22px; } body.tv .pk-sure div { font-size: 14px; }
+body.tv h1 { font-size: 30px; }
 </style>
 </head>
 <body>
@@ -206,6 +245,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
     <div class="alan" id="gMakineAlan"><label for="gMakine">Makine<i>*</i></label><select id="gMakine"></select></div>
     <p class="hata" id="gHata" hidden></p>
     <button class="btn btn-ana btn-dev" id="gDevam" type="button">Devam</button>
+    <button class="link panel-gir" id="bPanelG" type="button">Üretim paneli (yönetim)</button>
   </section>
 
   <section id="ekAna" hidden>
@@ -250,6 +290,22 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
 
     <div class="baslik-satir"><h2>Bugünün akışı</h2><button class="link" id="bOzet" type="button">Gün özeti / geçmiş günler</button></div>
     <ul class="liste" id="liste"></ul>
+    <button class="link panel-gir" id="bPanelA" type="button">Üretim paneli (yönetim)</button>
+  </section>
+
+  <section id="ekPanel" hidden>
+    <div class="pn-ust">
+      <div><h1>Üretim Paneli</h1><p class="sub" id="pnAlt"></p></div>
+      <div class="pn-dugme">
+        <button class="btn btn-ikincil" id="pnTv" type="button">Tam ekran</button>
+        <button class="btn btn-ikincil" id="pnCik" type="button">Çık</button>
+      </div>
+    </div>
+    <p class="pn-ozet" id="pnOzet"></p>
+    <div class="pn-izgara" id="pnMakine"></div>
+    <h2 id="pnIstBaslik" hidden>İstasyonlar (makinesiz bölümler · bugün kaydı olanlar)</h2>
+    <div class="pn-izgara" id="pnIstasyon"></div>
+    <p class="sub" id="pnNot">Süreler bugünün; mola ve temizlik düşülür. Çalışma oranı = çalışma ÷ şu ana kadarki planlanan süre. Tablet internetsizse kayıtlar gecikmeli gelir: kartın altındaki “tablet” satırına bakın.</p>
   </section>
 
   <section id="ekBaslat" hidden>
@@ -551,10 +607,12 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
   const DUR_EKRAN = { ekDurus: 1, ekBitir: 1, ekEkle: 1 };
   function goster(ad) {
     ekran = ad;
-    ['ekYukle', 'ekGiris', 'ekAna', 'ekBaslat', 'ekKapat', 'ekDurus', 'ekBitir', 'ekBosluk', 'ekEkle', 'ekNot', 'ekOzet', 'ekDuzelt', 'ekSifre'].forEach(id => $(id).hidden = id !== ad);
+    ['ekYukle', 'ekGiris', 'ekAna', 'ekBaslat', 'ekKapat', 'ekDurus', 'ekBitir', 'ekBosluk', 'ekEkle', 'ekNot', 'ekOzet', 'ekDuzelt', 'ekSifre', 'ekPanel'].forEach(id => $(id).hidden = id !== ad);
     $('altBar').hidden = !ALT[ad];
     if (ALT[ad]) { $('altOnay').textContent = ALT[ad]; $('altOnay').className = 'btn ' + (DUR_EKRAN[ad] ? 'btn-dur' : 'btn-ana'); }
-    $('kimBtn').hidden = !kimlik || ad === 'ekGiris';
+    $('kimBtn').hidden = !kimlik || ad === 'ekGiris' || ad === 'ekPanel';
+    document.body.classList.toggle('panel-acik', ad === 'ekPanel');
+    if (ad !== 'ekPanel') panelKapat();
     window.scrollTo(0, 0);
   }
   function toast(m) { const t = $('toast'); t.textContent = m; t.classList.add('goster'); clearTimeout(toast.z); toast.z = setTimeout(() => t.classList.remove('goster'), 2600); }
@@ -620,8 +678,8 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
   let sifreAmac = '';
   function sifreAc(amac) {
     sifreAmac = amac;
-    $('sfBaslik').textContent = amac === 'bagla' ? 'Tableti ' + kimlik.makine + ' makinesine bağla' : 'Yönetici girişi';
-    $('sfAlt').textContent = amac === 'bagla' ? 'Bu tablet ' + kimlik.makine + ' için kayıt cihazı olur; o makinenin önceki tabletinin yetkisi kalkar. İnternet gerekir.'
+    $('sfBaslik').textContent = amac === 'panel' ? 'Üretim paneli' : amac === 'bagla' ? 'Tableti ' + kimlik.makine + ' makinesine bağla' : 'Yönetici girişi';
+    $('sfAlt').textContent = amac === 'panel' ? 'Panel şifresini girin (yönetici şifresi de geçerli). Bu cihaz şifreyi hatırlar.' : amac === 'bagla' ? 'Bu tablet ' + kimlik.makine + ' için kayıt cihazı olur; o makinenin önceki tabletinin yetkisi kalkar. İnternet gerekir.'
       : 'Şifreyle bu cihazdan kayıtlara not eklenebilir ve kapanmış siparişler düzeltilebilir. Sipariş ve duruş yine sadece makinenin tabletinden girilir.';
     $('sfSifre').value = ''; hata('sfHata', ''); goster('ekSifre'); $('sfSifre').focus();
   }
@@ -634,6 +692,11 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
     $('altOnay').disabled = true;
     try {
       const h = await sifreHash(s);
+      if (sifreAmac === 'panel') {
+        const j = await panelGetir(h);
+        if (!j || !j.ok) return hata('sfHata', j && j.hata ? j.hata : 'Şifre yanlış.');
+        S.panel = h; kaydet(); return panelAc(j);
+      }
       if (sifreAmac === 'bagla') {
         const r = await fetch(API, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ api: 'bagla', cihaz: S.cihaz, makine: kimlik.makine, h }) });
         const j = await r.json();
@@ -1096,6 +1159,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
   /* ---------- Onay / vazgeç ---------- */
   $('altIptal').addEventListener('click', () => {
     if (geriOzet && (ekran === 'ekNot' || ekran === 'ekDuzelt')) { geriOzet = false; return ozetAc(ozetGun); }
+    if (ekran === 'ekSifre' && sifreAmac === 'panel' && !kimlik) { girisDoldur(); return goster('ekGiris'); }
     goster('ekAna'); ciz();
   });
   $('altOnay').addEventListener('click', () => {
@@ -1309,6 +1373,114 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
     navigator.serviceWorker.register('sw.js').catch(() => {});
   }
 
+  /* ---------- Üretim paneli ---------- */
+  let panelVeri = null, panelZam = null, panelHata = '', wakeLock = null;
+  async function panelGetir(h) {
+    if (DEMO) return demoPanel();
+    try {
+      const ctl = new AbortController(), zam = setTimeout(() => ctl.abort(), 25000);
+      const r = await fetch(API + '?api=panel&h=' + encodeURIComponent(h), { cache: 'no-store', signal: ctl.signal });
+      clearTimeout(zam); return await r.json();
+    } catch (e) { return null; }
+  }
+  function panelAc(veri) {
+    if (veri) { panelVeri = veri; panelHata = ''; }
+    goster('ekPanel'); panelCiz();
+    clearInterval(panelZam);
+    panelZam = setInterval(panelYenile, 60000);
+    if (!veri) panelYenile();
+  }
+  function panelKapat() {
+    clearInterval(panelZam); panelZam = null;
+    document.body.classList.remove('tv');
+    if (wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; }
+  }
+  async function panelYenile() {
+    if (ekran !== 'ekPanel' || !S.panel) return;
+    const j = await panelGetir(S.panel);
+    if (ekran !== 'ekPanel') return;
+    if (j && j.ok) { panelVeri = j; panelHata = ''; }
+    else if (j && j.hata) { S.panel = ''; kaydet(); return sifreAc('panel'); } // şifre değişmiş
+    else panelHata = 'İnternete ulaşılamadı; son alınan bilgiler gösteriliyor.';
+    panelCiz();
+  }
+  const dkYaz = d => { d = Math.max(0, Math.round(Number(d) || 0)); return d >= 60 ? Math.floor(d / 60) + ' sa' + (d % 60 ? ' ' + (d % 60) + ' dk' : '') : d + ' dk'; };
+  const onceYaz = iso => { const d = Math.round((Date.now() - new Date(iso).getTime()) / 60000); return d < 1 ? 'az önce' : dkYaz(d) + ' önce'; };
+  const DURUM_AD = { calisiyor: 'ÇALIŞIYOR', duruyor: 'DURUYOR', bosta: 'BOŞTA', kayityok: 'KAYIT YOK' };
+  function panelKart(k) {
+    let govde = '';
+    if (k.durum === 'duruyor') {
+      govde = '<div class="pk-neden">' + esc(k.durus.neden) + ' · ' + dkYaz(k.durus.dk) + (k.durus.asildi ? ' <span class="pk-etiket">sınır ' + k.durus.sinir + ' dk aşıldı</span>' : '') + '</div>' +
+        (k.durus.aciklama ? '<div class="pk-acik">“' + esc(k.durus.aciklama) + '”</div>' : '') +
+        (k.siparis ? '<div class="pk-kim">Sipariş ' + esc(k.siparis.no) + (k.siparis.sipAdet ? ' · ' + esc(k.siparis.sipAdet) + ' adet' : '') + '</div>' : '');
+    } else if (k.durum === 'calisiyor') {
+      govde = '<div class="pk-neden">Sipariş ' + esc(k.siparis.no) + (k.siparis.sipAdet ? ' · ' + esc(k.siparis.sipAdet) + ' adet' : '') + '</div>' +
+        '<div class="pk-kim">Başlangıç ' + saatYaz(k.siparis.bas) + (k.siparis.dunden ? ' <span class="pk-etiket">dünden açık</span>' : '') + '</div>';
+    } else if (k.durum === 'bosta') {
+      govde = '<div class="pk-acik">Açık sipariş ya da duruş yok.</div>';
+    } else govde = '<div class="pk-acik">Bugün kayıt girilmedi.</div>';
+    const sure = k.durum === 'kayityok' ? '' : '<div class="pk-sure"><div>Çalışma<b>' + dkYaz(k.calismaDk) + '</b></div><div>Duruş<b>' + dkYaz(k.durusDk) + '</b></div><div>' +
+      (k.oran == null ? 'Adet<b>' + k.adet + '</b>' : 'Oran<b>%' + k.oran + '</b>') + '</div></div>' + (k.adet ? '<div class="pk-alt">Bugün kapanan siparişlerde ' + k.adet + ' adet</div>' : '');
+    // Tablet bağlantısı: 2 dakikada bir sinyal; 10 dakikadan eskiyse uyarı
+    let tablet = '';
+    if (k.nabiz) {
+      const eski = Date.now() - new Date(k.nabiz.t).getTime() > 10 * 60000;
+      tablet = 'Tablet ' + (eski ? '<span class="kotu">' + onceYaz(k.nabiz.t) + ' görüldü (bağlantı yok?)</span>' : 'çevrimiçi') +
+        (k.nabiz.kuyruk ? ' · <span class="kotu">' + k.nabiz.kuyruk + ' kayıt gönderilmeyi bekliyor</span>' : '');
+    } else if (k.durum !== 'kayityok') tablet = 'Tablet sinyali yok (eski sürüm ya da kapalı)';
+    const son = k.sonKayit ? 'Son kayıt ' + saatYaz(k.sonKayit) + (gunAnahtar(k.sonKayit) !== gunAnahtar(Date.now()) ? ' (' + new Date(k.sonKayit).toLocaleDateString('tr-TR') + ')' : '') : '';
+    return '<div class="pk ' + k.durum + (k.durus && k.durus.asildi ? ' pk-uyari' : '') + '"><div class="pk-ust"><b>' + esc(k.ad) + '</b><span class="pk-rozet">● ' + DURUM_AD[k.durum] + '</span></div>' +
+      '<div class="pk-kim">' + esc(k.tip === 'makine' ? (k.personel || '—') : k.bolum) + '</div>' + govde + sure +
+      '<div class="pk-alt">' + [son, tablet].filter(Boolean).join(' · ') + '</div></div>';
+  }
+  function panelCiz() {
+    const v = panelVeri;
+    if (!v) { $('pnAlt').textContent = 'Yükleniyor…'; $('pnMakine').innerHTML = ''; $('pnIstasyon').innerHTML = ''; $('pnOzet').textContent = ''; return; }
+    const mak = v.kartlar.filter(k => k.tip === 'makine'), ist = v.kartlar.filter(k => k.tip !== 'makine');
+    const say = d => v.kartlar.filter(k => k.durum === d).length;
+    const adet = v.kartlar.reduce((t, k) => t + (Number(k.adet) || 0), 0);
+    $('pnOzet').innerHTML = '<span>Çalışıyor <b>' + say('calisiyor') + '</b></span><span>Duruyor <b>' + say('duruyor') + '</b></span><span>Boşta <b>' + say('bosta') + '</b></span>' +
+      '<span>Kayıt yok <b>' + say('kayityok') + '</b></span><span>Bugün kapanan <b>' + adet + '</b> adet</span><span>Planlanan (şu ana kadar) <b>' + dkYaz(v.planSimdi) + '</b></span>';
+    $('pnMakine').innerHTML = mak.map(panelKart).join('') || '<p class="bos">Makine listesi boş.</p>';
+    $('pnIstasyon').innerHTML = ist.map(panelKart).join('');
+    $('pnIstBaslik').hidden = !ist.length;
+    $('pnAlt').textContent = (panelHata || 'Güncellendi ' + saatYaz(v.zaman) + ' · her dakika yenilenir');
+  }
+  function panelGir() { if (S.panel) panelAc(null); else sifreAc('panel'); }
+  $('bPanelG').addEventListener('click', panelGir);
+  $('bPanelA').addEventListener('click', panelGir);
+  $('pnCik').addEventListener('click', () => { if (kimlik) anaAc(); else { girisDoldur(); goster('ekGiris'); } });
+  $('pnTv').addEventListener('click', async () => {
+    const tv = !document.body.classList.contains('tv');
+    document.body.classList.toggle('tv', tv);
+    $('pnTv').textContent = tv ? 'Tam ekrandan çık' : 'Tam ekran';
+    try { if (tv) { await document.documentElement.requestFullscreen(); } else if (document.fullscreenElement) await document.exitFullscreen(); } catch (e) {}
+    try { if (tv && navigator.wakeLock) wakeLock = await navigator.wakeLock.request('screen'); else if (!tv && wakeLock) { wakeLock.release(); wakeLock = null; } } catch (e) {}
+  });
+  document.addEventListener('fullscreenchange', () => {
+    if (!document.fullscreenElement && document.body.classList.contains('tv')) { document.body.classList.remove('tv'); $('pnTv').textContent = 'Tam ekran'; }
+  });
+  function demoPanel() {
+    const t = m => new Date(Date.now() - m * 60000).toISOString();
+    return { ok: true, zaman: new Date().toISOString(), planSimdi: 255, kartlar: [
+      { tip: 'makine', ad: 'HF-DRC-02', bolum: 'CNC MAKİNE', personel: 'Enes', durum: 'calisiyor', siparis: { no: '777', sipAdet: 500, bas: t(190) }, calismaDk: 165, durusDk: 20, adet: 120, oran: 65, sonKayit: t(15), nabiz: { t: t(1), kuyruk: 0 } },
+      { tip: 'makine', ad: 'HF-PNL-01', bolum: 'CNC MAKİNE', personel: 'Sevim', durum: 'duruyor', durus: { neden: 'KALIP DEĞİŞTİRME', aciklama: 'yeni kalıp', dk: 140, sinir: 120, asildi: true }, siparis: { no: '812', sipAdet: 300 }, calismaDk: 90, durusDk: 150, adet: 0, oran: 35, sonKayit: t(140), nabiz: { t: t(25), kuyruk: 2 } },
+      { tip: 'makine', ad: 'HF-SRT-01', bolum: 'CNC MAKİNE', personel: 'Erdoğan', durum: 'bosta', calismaDk: 200, durusDk: 10, adet: 450, oran: 78, sonKayit: t(30), nabiz: { t: t(1), kuyruk: 0 } },
+      { tip: 'makine', ad: 'HF-CYL-04', bolum: 'CNC MAKİNE', personel: '', durum: 'kayityok', calismaDk: 0, durusDk: 0, adet: 0, oran: 0, sonKayit: '' },
+      { tip: 'istasyon', ad: 'Emine Özkan', bolum: 'KOZMETİK KALİTE KONTROL', personel: 'Emine Özkan', durum: 'calisiyor', siparis: { no: 'K-12', sipAdet: 2000, bas: t(60) }, calismaDk: 60, durusDk: 0, adet: 0, oran: 24, sonKayit: t(60) }
+    ] };
+  }
+
+  /* ---------- Tablet sinyali (panelde "çevrimiçi" görünmesi için) ---------- */
+  async function nabiz() {
+    if (DEMO || !kimlik || !navigator.onLine) return;
+    try {
+      await fetch(API + '?api=nabiz&cihaz=' + encodeURIComponent(S.cihaz) + '&bolum=' + encodeURIComponent(kimlik.bolum) + '&personel=' + encodeURIComponent(kimlik.personel) +
+        '&makine=' + encodeURIComponent(kimlik.makine || '') + '&kuyruk=' + S.kuyruk.length, { cache: 'no-store' });
+    } catch (e) {}
+  }
+  setInterval(nabiz, 120000);
+
   /* ---------- Ad düzeltmeleri ---------- */
   // Yanlış girilmiş isimler: tablet kendiliğinden yeni ada geçer, açık sipariş/duruş ve geçmiş korunur
   const AD_DEGISIM = { 'CNC MAKİNE': { 'Sevcan': 'Sevim' } };
@@ -1342,7 +1514,10 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
   const k0 = kimlik;
   const gecerli = k0 && (AYAR.personel[k0.bolum] || []).indexOf(k0.personel) >= 0 &&
     (!(AYAR.makineler[k0.bolum] || []).length || AYAR.makineler[k0.bolum].indexOf(k0.makine) >= 0);
-  if (gecerli) anaAc(); else { kimlik = null; girisDoldur(); goster('ekGiris'); }
+  if (gecerli) anaAc();
+  else if (S.panel) { kimlik = null; panelAc(null); } // yöneticinin telefonu: doğrudan panel
+  else { kimlik = null; girisDoldur(); goster('ekGiris'); }
+  setTimeout(nabiz, 5000);
   senkGoster();
   ayarGetir();
   senkron();
