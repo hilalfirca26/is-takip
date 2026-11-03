@@ -221,6 +221,8 @@ body.tv h1 { font-size: 30px; }
 .pk[role=button] { cursor: pointer; } .pk[role=button]:hover { border-color: var(--muted); }
 .pk[role=button]:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 .liste .kimad { font-weight: 500; color: var(--muted); }
+.yeni-gecis { border-top: 1px dashed var(--line); padding-top: 12px; display: flex; flex-direction: column; gap: 8px; }
+.yeni-gecis .sub { margin: 0; }
 </style>
 </head>
 <body>
@@ -322,9 +324,10 @@ body.tv h1 { font-size: 30px; }
     <div><h1>Sipariş başlat</h1><p class="sub" id="bAlt"></p></div>
     <div class="iki">
       <div class="alan"><label for="sNo">Sipariş No<i>*</i></label><input id="sNo" autocomplete="off"></div>
-      <div class="alan"><label for="sAdet">Sipariş Adedi<i>*</i></label><input id="sAdet" inputmode="numeric" autocomplete="off"></div>
+      <div class="alan"><label for="sAdet">Yapılacak Adet<i>*</i></label><input id="sAdet" inputmode="numeric" autocomplete="off"></div>
     </div>
     <p class="sub" id="sAdetIpucu" hidden></p>
+    <p class="sub" id="sAdetNot">Siparişin bir kısmı önceden yapıldıysa sadece kalanı yazın (örn. 32'nin 9'u yapıldıysa 23).</p>
     <p class="sub" id="bSureNot">Süre “Siparişi Başlat”a bastığınız anda başlar. Adet, fire ve delik bilgilerini işi bitirince gireceksiniz.</p>
     <p class="hata" id="bHata" hidden></p>
   </section>
@@ -390,6 +393,10 @@ body.tv h1 { font-size: 30px; }
     <div class="nedenler" id="bsNedenler" role="group" aria-label="Kayıt yokken ne oldu"></div>
     <div class="alan"><label for="bsAcik" id="bsAcikEt">Açıklama</label><input id="bsAcik" autocomplete="off" placeholder="İsteğe bağlı"></div>
     <p class="hata" id="bsHata" hidden></p>
+    <div class="yeni-gecis">
+      <p class="sub">Bu süre boyunca başka bir makinede ya da bölümdeydiyseniz ve bu makineye şimdi geçtiyseniz:</p>
+      <button class="btn btn-ikincil" id="bsYeniGectim" type="button">Bu makineye yeni geçtim, öncesi bana ait değil</button>
+    </div>
   </section>
 
   <section id="ekEkle" hidden>
@@ -423,7 +430,7 @@ body.tv h1 { font-size: 30px; }
       <div class="alan"><label for="dzAdet">Üretim Adedi<i>*</i></label><input id="dzAdet" inputmode="numeric" autocomplete="off"></div>
       <div class="alan"><label for="dzFire">Hatalı / Fire</label><input id="dzFire" inputmode="numeric" autocomplete="off" placeholder="0"></div>
     </div>
-    <div class="alan"><label for="dzSipAdet">Sipariş Adedi</label><input id="dzSipAdet" inputmode="numeric" autocomplete="off"></div>
+    <div class="alan"><label for="dzSipAdet">Yapılacak Adet</label><input id="dzSipAdet" inputmode="numeric" autocomplete="off"></div>
     <div class="uc" id="dzCnc">
       <div class="alan"><label for="dzDelik">Delik Sayısı<i>*</i></label><input id="dzDelik" inputmode="numeric" autocomplete="off"></div>
       <div class="alan"><label for="dzYatay">Yatay mesafe (mm)</label><input id="dzYatay" inputmode="decimal" autocomplete="off"></div>
@@ -776,7 +783,7 @@ body.tv h1 { font-size: 30px; }
     $('kBosluk').hidden = !b;
     if (s) {
       $('kSipNo').textContent = 'Sipariş ' + s.no;
-      $('kSipBas').textContent = 'Başladı ' + saatYaz(s.bas) + (s.sipAdet ? ' · ' + s.sipAdet + ' adet sipariş' : '');
+      $('kSipBas').textContent = 'Başladı ' + saatYaz(s.bas) + (s.sipAdet ? ' · ' + s.sipAdet + ' adet yapılacak' : '');
       sipUyariGoster(s);
       $('kSipNot').hidden = !(s.notlar && s.notlar.length);
       if (s.notlar && s.notlar.length) $('kSipNot').textContent = 'Not: ' + s.notlar.map(n => saatYaz(n.t) + ' ' + n.metin).join(' · ');
@@ -942,10 +949,16 @@ body.tv h1 { font-size: 30px; }
   let sAdetOto = false;
   $('sNo').addEventListener('input', () => {
     const no = $('sNo').value.trim();
-    const onceki = no ? K().gecmis.filter(g => g.tur === 'siparis' && String(g.no) === no && g.sonuc === 'Yarım bırakıldı' && Number(g.kalan) > 0).pop() : null;
+    // Bu tablette aynı makinede (kim girdiyse) yarım bırakılmış aynı sipariş: en son bırakılanın kalanı
+    let onceki = null, kimdi = '';
+    if (no) Object.keys(S.kisiler).forEach(a => {
+      const kk = S.kisiler[a]; if (!kk.kim || kk.kim.bolum !== kimlik.bolum || (kk.kim.makine || '') !== (kimlik.makine || '')) return;
+      kk.gecmis.forEach(g => { if (g.tur === 'siparis' && String(g.no) === no && g.sonuc === 'Yarım bırakıldı' && Number(g.kalan) > 0 && (!onceki || g.bit > onceki.bit)) { onceki = g; kimdi = kk.kim.personel; } });
+    });
     if (onceki && (!$('sAdet').value || sAdetOto)) {
       $('sAdet').value = onceki.kalan; sAdetOto = true;
-      $('sAdetIpucu').textContent = 'Bu sipariş ' + new Date(onceki.bas).toLocaleDateString('tr-TR') + ' günü yarım bırakılmış; kalan ' + onceki.kalan + ' adet yazıldı. Farklıysa değiştirin.';
+      $('sAdetIpucu').textContent = 'Bu sipariş ' + new Date(onceki.bit).toLocaleDateString('tr-TR') + ' ' + saatYaz(onceki.bit) + (kimdi && kimdi !== kimlik.personel ? ' · ' + kimdi + ' tarafından' : '') +
+        ' yarım bırakılmış; kalan ' + onceki.kalan + ' adet yazıldı. Farklıysa değiştirin.';
       $('sAdetIpucu').hidden = false;
     } else if (!onceki && sAdetOto) { $('sAdet').value = ''; sAdetOto = false; $('sAdetIpucu').hidden = true; }
   });
@@ -969,7 +982,7 @@ body.tv h1 { font-size: 30px; }
       : (uzun ? 'Sipariş 10 saatten uzun süredir açık. İş daha önce bittiyse gerçek saati yazın; şimdi bittiyse boş bırakın.' : 'Boş bırakırsanız bitiş şu an kabul edilir.');
     document.querySelectorAll('input[name="kpSonuc"]').forEach(r => r.checked = false);
     $('kpBaslik').textContent = 'Sipariş ' + s.no;
-    $('kpAlt').textContent = saatYaz(s.bas) + ' başladı · şimdi kapatılıyor' + (s.sipAdet ? ' · sipariş ' + s.sipAdet + ' adet' : '');
+    $('kpAlt').textContent = saatYaz(s.bas) + ' başladı · şimdi kapatılıyor' + (s.sipAdet ? ' · yapılacak ' + s.sipAdet + ' adet' : '');
     kalanGoster();
     hata('kpHata', ''); kapatOzet(); goster('ekKapat'); $('kpAdet').focus();
   });
@@ -978,7 +991,7 @@ body.tv h1 { font-size: 30px; }
     const s = K().siparis, a = sayi($('kpAdet').value);
     const kal = s ? kalanHesap(s.sipAdet, a) : '';
     $('kpKalan').hidden = kal === '' || a === '' || isNaN(a);
-    if (!$('kpKalan').hidden) $('kpKalan').textContent = kal > 0 ? 'Sipariş ' + s.sipAdet + ' adet · kalan ' + kal + ' adet' : 'Sipariş adedi (' + s.sipAdet + ') tamamlandı.';
+    if (!$('kpKalan').hidden) $('kpKalan').textContent = kal > 0 ? 'Yapılacak ' + s.sipAdet + ' adet · kalan ' + kal + ' adet' : 'Yapılacak adet (' + s.sipAdet + ') tamamlandı.';
   }
   $('kpAdet').addEventListener('input', kalanGoster);
   $('kpBitisAc').addEventListener('click', () => { $('kpBitisAlan').hidden = false; $('kpBitisAc').hidden = true; $('kpBitis').focus(); });
@@ -1031,6 +1044,16 @@ body.tv h1 { font-size: 30px; }
     hata('bsHata', ''); goster('ekBosluk');
   }
   nedenSecici('bsNedenler', n => { bsNeden = n; acikZorunlu('bsAcikEt', 'bsAcik', n === 'DİĞER'); });
+  // Başka makineden/bölümden yeni geçen: boşluk bu kişiye yazılmaz (makine o saatlerde kayıtsız kalır), Kontrol'e not düşer
+  $('bsYeniGectim').addEventListener('click', () => {
+    const k = K(), b = bosluk(), simdi = new Date(); if (!b) return goster('ekAna');
+    const bit = b.sona ? simdi : b.bit;
+    olay(k, 'NOT', {}, { konu: 'Makineye sonradan geçildi', aciklama: k.kim.personel + ' ' + saatYaz(bit) + ' itibarıyla ' + (k.kim.makine || k.kim.bolum) + ' için kayda başladı; ' +
+      saatYaz(b.bas) + '–' + saatYaz(bit) + ' (' + b.dk + ' dk) bu kişiye yazılmadı, o saatlerde makine kayıtsız.' + ($('bsAcik').value.trim() ? ' Not: ' + $('bsAcik').value.trim() : '') });
+    (k.aciklanan = k.aciklanan || []).push({ bas: b.bas.toISOString(), bit: bit.toISOString() });
+    const sonra = sonraki;
+    bitti('Kaydedildi', () => { if (bosluk()) boslukAc(sonra); else if (sonra === 'siparis') siparisFormu(); else if (sonra === 'durus') durusFormu(); });
+  });
 
   /* ---------- Unutulan duruşu ekle ---------- */
   $('bDurusEkle').addEventListener('click', () => {
@@ -1209,7 +1232,7 @@ body.tv h1 { font-size: 30px; }
       const no = $('sNo').value.trim();
       if (!no) return isaret('sNo', 'Sipariş numarasını yazın.');
       const sipAdet = sayi($('sAdet').value);
-      if (sipAdet === '' || !Number.isInteger(sipAdet) || sipAdet <= 0) return isaret('sAdet', 'Sipariş adedini yazın (kaç adet yapılacak).');
+      if (sipAdet === '' || !Number.isInteger(sipAdet) || sipAdet <= 0) return isaret('sAdet', 'Yapılacak adedi yazın.');
       if (k.siparis) return hata('bHata', 'Açık bir sipariş var (' + k.siparis.no + '). Önce onu kapatın.');
       const geri = sipGeri, id = yeniNo('S'), t = (geri || simdi).toISOString();
       const veri = { id, no, t, sipAdet };
@@ -1325,7 +1348,7 @@ body.tv h1 { font-size: 30px; }
       if (fire !== '' && (!Number.isInteger(fire) || fire < 0)) return isaret('dzFire', 'Fire adedi tam sayı olmalı.');
       if (fire !== '' && fire > adet) return isaret('dzFire', 'Fire adedi üretim adedinden büyük olamaz.');
       const sa = sayi($('dzSipAdet').value);
-      if (sa !== '' && (!Number.isInteger(sa) || sa <= 0)) return isaret('dzSipAdet', 'Sipariş adedi pozitif tam sayı olmalı.');
+      if (sa !== '' && (!Number.isInteger(sa) || sa <= 0)) return isaret('dzSipAdet', 'Yapılacak adet pozitif tam sayı olmalı.');
       const cnc = !$('dzCnc').hidden, del = sayi($('dzDelik').value), yat = sayi($('dzYatay').value), dik = sayi($('dzDikey').value);
       if (cnc && (del === '' || !Number.isInteger(del) || del < 0)) return isaret('dzDelik', 'Delik sayısını tam sayı olarak yazın.');
       if (cnc && yat !== '' && isNaN(yat)) return isaret('dzYatay', 'Yatay mesafe sayı olmalı (ör. 12,5).');
