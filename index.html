@@ -218,6 +218,9 @@ body.tv .pn-izgara { grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)
 body.tv .pk-ust b { font-size: 26px; } body.tv .pk-rozet { font-size: 16px; } body.tv .pk-neden { font-size: 22px; }
 body.tv .pk-kim, body.tv .pk-acik { font-size: 18px; } body.tv .pk-sure b { font-size: 22px; } body.tv .pk-sure div { font-size: 14px; }
 body.tv h1 { font-size: 30px; }
+.pk[role=button] { cursor: pointer; } .pk[role=button]:hover { border-color: var(--muted); }
+.pk[role=button]:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.liste .kimad { font-weight: 500; color: var(--muted); }
 </style>
 </head>
 <body>
@@ -291,6 +294,13 @@ body.tv h1 { font-size: 30px; }
     <div class="baslik-satir"><h2>Bugünün akışı</h2><button class="link" id="bOzet" type="button">Gün özeti / geçmiş günler</button></div>
     <ul class="liste" id="liste"></ul>
     <button class="link panel-gir" id="bPanelA" type="button">Üretim paneli (yönetim)</button>
+  </section>
+
+  <section id="ekPanelGun" hidden>
+    <div><h1 id="pgBaslik">Bugün</h1><p class="sub" id="pgAlt"></p></div>
+    <p class="ozet-satir" id="pgToplam" hidden></p>
+    <ul class="liste" id="pgListe"></ul>
+    <button class="btn btn-ikincil" id="pgGeri" type="button">Panele dön</button>
   </section>
 
   <section id="ekPanel" hidden>
@@ -607,10 +617,10 @@ body.tv h1 { font-size: 30px; }
   const DUR_EKRAN = { ekDurus: 1, ekBitir: 1, ekEkle: 1 };
   function goster(ad) {
     ekran = ad;
-    ['ekYukle', 'ekGiris', 'ekAna', 'ekBaslat', 'ekKapat', 'ekDurus', 'ekBitir', 'ekBosluk', 'ekEkle', 'ekNot', 'ekOzet', 'ekDuzelt', 'ekSifre', 'ekPanel'].forEach(id => $(id).hidden = id !== ad);
+    ['ekYukle', 'ekGiris', 'ekAna', 'ekBaslat', 'ekKapat', 'ekDurus', 'ekBitir', 'ekBosluk', 'ekEkle', 'ekNot', 'ekOzet', 'ekDuzelt', 'ekSifre', 'ekPanel', 'ekPanelGun'].forEach(id => $(id).hidden = id !== ad);
     $('altBar').hidden = !ALT[ad];
     if (ALT[ad]) { $('altOnay').textContent = ALT[ad]; $('altOnay').className = 'btn ' + (DUR_EKRAN[ad] ? 'btn-dur' : 'btn-ana'); }
-    $('kimBtn').hidden = !kimlik || ad === 'ekGiris' || ad === 'ekPanel';
+    $('kimBtn').hidden = !kimlik || ad === 'ekGiris' || ad === 'ekPanel' || ad === 'ekPanelGun';
     document.body.classList.toggle('panel-acik', ad === 'ekPanel');
     if (ad !== 'ekPanel') panelKapat();
     window.scrollTo(0, 0);
@@ -670,7 +680,10 @@ body.tv h1 { font-size: 30px; }
     // Henüz tableti olmayan makinede ilk kayıt bu cihazı otomatik bağlar
     return (y.kilitli || []).indexOf(kimlik.makine) >= 0 && (y.bu || []).indexOf(kimlik.makine) < 0;
   }
-  const yazabilir = () => !izleme() || !!S.yonetici;
+  // Paneldeki gün görünümü sadece izleme içindir
+  const yazabilir = () => ekran !== 'ekPanelGun' && (!izleme() || !!S.yonetici);
+  // Panelde bir makinede birden çok operatör olabilir: kayıtta kişi adı gösterilir
+  const kimEk = x => x.kimAd ? ' · <span class="kimad">' + esc(x.kimAd) + '</span>' : '';
   async function sifreHash(s) {
     const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('hf-istakip|' + s));
     return Array.from(new Uint8Array(b)).map(x => x.toString(16).padStart(2, '0')).join('');
@@ -813,10 +826,10 @@ body.tv h1 { font-size: 30px; }
   }
   /** Siparişin başlangıç satırı: ince, tek satır. Sipariş sürüyorsa notu ve "Not ekle" de burada. */
   function basHtml(x) {
-    if (!x.acik) return '<li class="t-bas"><span class="saat">' + saatYaz(x.bas) + '</span><span class="bas">▶ Sipariş ' + esc(x.no) + ' başladı' + (x.sipAdet ? ' · ' + esc(x.sipAdet) + ' adet' : '') + '</span></li>';
+    if (!x.acik) return '<li class="t-bas"><span class="saat">' + saatYaz(x.bas) + '</span><span class="bas">▶ Sipariş ' + esc(x.no) + ' başladı' + (x.sipAdet ? ' · ' + esc(x.sipAdet) + ' adet' : '') + kimEk(x) + '</span></li>';
     const notlar = x.notlar && x.notlar.length ? '<span class="acik">Not: ' + esc(x.notlar.map(n => n.metin).join(' · ')) + '</span>' : '';
     const not = !x.simdi && yazabilir() ? '<span class="islem"><button type="button" class="link" data-not="' + esc(x.id) + '">Not ekle</button></span>' : '';
-    return '<li class="t-bas acikbas"><span class="saat">' + saatYaz(x.bas) + '</span><span class="bas">▶ Sipariş ' + esc(x.no) + ' başladı' + (x.sipAdet ? ' · ' + esc(x.sipAdet) + ' adet' : '') + ' · devam ediyor</span>' +
+    return '<li class="t-bas acikbas"><span class="saat">' + saatYaz(x.bas) + '</span><span class="bas">▶ Sipariş ' + esc(x.no) + ' başladı' + (x.sipAdet ? ' · ' + esc(x.sipAdet) + ' adet' : '') + ' · devam ediyor' + kimEk(x) + '</span>' +
       (notlar || not ? '<span class="det">' + notlar + not + '</span>' : '') + '</li>';
   }
   /** Bir geçmiş kaydının liste satırı (ana ekran ve gün özeti ortak). */
@@ -828,14 +841,14 @@ body.tv h1 { font-size: 30px; }
         (x.delik !== '' && x.delik != null ? esc(x.delik) + ' delik' : 'Henüz kapatılmadı') + notlar +
         (yazabilir() ? '<span class="islem"><button type="button" class="link" data-not="' + esc(x.id) + '">Not ekle</button></span>' : '') + '</span></li>';
       return '<li class="t-siparis"><span class="saat">' + saatYaz(x.bit) + '</span><span class="bas">■ Sipariş ' + esc(x.no) +
-        (x.sonuc === 'Yarım bırakıldı' ? ' yarım bırakıldı' : ' kapandı') + (x.isaret ? ' · ' + esc(x.isaret) : '') + '</span><span class="det"><span class="mono">' + adetYazi(x) + '</span> adet' + (Number(x.kalan) > 0 ? ' · <b>kalan ' + esc(x.kalan) + '</b>' : '') +
+        (x.sonuc === 'Yarım bırakıldı' ? ' yarım bırakıldı' : ' kapandı') + (x.isaret ? ' · ' + esc(x.isaret) : '') + kimEk(x) + '</span><span class="det"><span class="mono">' + adetYazi(x) + '</span> adet' + (Number(x.kalan) > 0 ? ' · <b>kalan ' + esc(x.kalan) + '</b>' : '') +
         (Number(x.fire) ? ' · ' + esc(x.fire) + ' fire' : '') + (x.delik !== '' && x.delik != null ? ' · ' + esc(x.delik) + ' delik' : '') +
         ' · ' + saatYaz(x.bas) + '–' + saatYaz(x.bit) + ' · ' + esc(x.brut) + ' dk' + (Number(x.durus) ? ' · ' + esc(x.durus) + ' dk duruş' : '') + bek + notlar +
         (yazabilir() ? '<span class="islem"><button type="button" class="link" data-not="' + esc(x.id) + '">Not ekle</button>' +
         '<button type="button" class="link" data-duzelt="' + esc(x.id) + '">Düzelt</button></span>' : '') + '</span></li>';
     }
     return '<li class="t-durus' + (x.sipId ? ' ic' : '') + '"><span class="saat">' + saatYaz(x.bas) + '–' + (x.acik ? '…' : saatYaz(x.bit)) + '</span><span class="bas">' + esc(x.neden) +
-      (x.acik ? ' · devam ediyor' : ' · ' + esc(x.sure) + ' dk') + '</span><span class="det">' +
+      (x.acik ? ' · devam ediyor' : ' · ' + esc(x.sure) + ' dk') + kimEk(x) + '</span><span class="det">' +
       (x.aciklama ? '<span class="acik">' + esc(x.aciklama) + '</span>' : '') +
       (x.sipId ? 'Sipariş ' + esc(x.sipNo) + ' içinde' : 'Sipariş dışı') + (x.isaret ? ' · ' + esc(x.isaret) : '') + bek + '</span></li>';
   }
@@ -1156,6 +1169,23 @@ body.tv h1 { font-size: 30px; }
     toast('Duruş bitirildi · ' + m); ciz();
   });
 
+  /* ---------- Enter: sonraki kutuya geç; son kutuda (ya da notta) ekranın ana düğmesine bas ---------- */
+  const yaziAlanlari = () => { const sec = $(ekran); return sec ? [...sec.querySelectorAll('input:not([type=radio]):not([type=checkbox]):not([type=hidden]), textarea')]
+    .filter(e => !e.disabled && e.offsetParent !== null) : []; };
+  document.addEventListener('focusin', e => {
+    const l = yaziAlanlari(), i = l.indexOf(e.target); if (i < 0) return;
+    e.target.setAttribute('enterkeyhint', e.target.tagName === 'TEXTAREA' || i === l.length - 1 ? 'done' : 'next');
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Enter' || e.isComposing || e.shiftKey) return;
+    const l = yaziAlanlari(), i = l.indexOf(e.target); if (i < 0) return;
+    e.preventDefault();
+    if (e.target.tagName !== 'TEXTAREA' && i < l.length - 1) return l[i + 1].focus();
+    e.target.blur();
+    if (!$('altBar').hidden) $('altOnay').click();
+    else if (ekran === 'ekGiris') $('gDevam').click();
+  });
+
   /* ---------- Onay / vazgeç ---------- */
   $('altIptal').addEventListener('click', () => {
     if (geriOzet && (ekran === 'ekNot' || ekran === 'ekDuzelt')) { geriOzet = false; return ozetAc(ozetGun); }
@@ -1430,7 +1460,7 @@ body.tv h1 { font-size: 30px; }
         (k.nabiz.kuyruk ? ' · <span class="kotu">' + k.nabiz.kuyruk + ' kayıt gönderilmeyi bekliyor</span>' : '');
     } else if (k.durum !== 'kayityok') tablet = 'Tablet sinyali yok (eski sürüm ya da kapalı)';
     const son = k.sonKayit ? 'Son kayıt ' + saatYaz(k.sonKayit) + (gunAnahtar(k.sonKayit) !== gunAnahtar(Date.now()) ? ' (' + new Date(k.sonKayit).toLocaleDateString('tr-TR') + ')' : '') : '';
-    return '<div class="pk ' + k.durum + (k.durus && k.durus.asildi ? ' pk-uyari' : '') + '"><div class="pk-ust"><b>' + esc(k.ad) + '</b><span class="pk-rozet">● ' + DURUM_AD[k.durum] + '</span></div>' +
+    return '<div role="button" tabindex="0" data-anahtar="' + esc(k.anahtar || '') + '" data-ad="' + esc(k.ad) + '" class="pk ' + k.durum + (k.durus && k.durus.asildi ? ' pk-uyari' : '') + '"><div class="pk-ust"><b>' + esc(k.ad) + '</b><span class="pk-rozet">● ' + DURUM_AD[k.durum] + '</span></div>' +
       '<div class="pk-kim">' + esc(k.tip === 'makine' ? (k.personel || '—') : k.bolum) + '</div>' + govde + sure +
       '<div class="pk-alt">' + [son, tablet].filter(Boolean).join(' · ') + '</div></div>';
   }
@@ -1447,6 +1477,36 @@ body.tv h1 { font-size: 30px; }
     $('pnIstBaslik').hidden = !ist.length;
     $('pnAlt').textContent = (panelHata || 'Güncellendi ' + saatYaz(v.zaman) + ' · her dakika yenilenir');
   }
+  /* Karta dokununca o makinenin (ya da kişinin) bugünkü akışı — sadece izleme */
+  async function panelGunAc(anahtar, ad) {
+    if (!anahtar) return;
+    $('pgBaslik').textContent = ad + ' · bugün'; $('pgAlt').textContent = 'Kayıtlar tablodan getiriliyor…';
+    $('pgToplam').hidden = true; $('pgListe').innerHTML = '';
+    goster('ekPanelGun');
+    let j = null;
+    if (DEMO) j = { ok: true, siparisler: [], duruslar: [] };
+    else try { const r = await fetch(API + '?api=panelGun&h=' + encodeURIComponent(S.panel) + '&anahtar=' + encodeURIComponent(anahtar), { cache: 'no-store' }); j = await r.json(); } catch (e) {}
+    if (ekran !== 'ekPanelGun') return;
+    if (!j || !j.ok) { $('pgAlt').textContent = j && j.hata ? j.hata : 'İnternete ulaşılamadı.'; return; }
+    const notlar = t => String(t || '').split(' | ').filter(Boolean).map(m => ({ metin: m }));
+    const kay = (j.siparisler || []).map(x => Object.assign({ tur: 'siparis', notlar: notlar(x.not), kimAd: x.personel }, x))
+      .concat((j.duruslar || []).map(x => Object.assign({ tur: 'durus', kimAd: x.personel }, x)));
+    // Tek kişi çalıştıysa her satırda adı tekrar yazmaya gerek yok
+    const kisiler = [...new Set(kay.map(x => x.kimAd))];
+    if (kisiler.length < 2) kay.forEach(x => { x.kimAd = ''; });
+    const sip = kay.filter(x => x.tur === 'siparis' && !x.acik), dur = kay.filter(x => x.tur === 'durus' && !x.acik);
+    const top = (l, f) => l.reduce((t, x) => t + (Number(f(x)) || 0), 0);
+    $('pgToplam').textContent = sip.length + ' sipariş kapandı · ' + top(sip, x => x.adet) + ' adet · ' + dur.length + ' duruş (' + top(dur, x => x.sure) + ' dk)';
+    $('pgToplam').hidden = !kay.length;
+    $('pgAlt').textContent = (kisiler.filter(Boolean).join(', ') || 'Bugün kayıt yok') + ' · ' + new Date().toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' });
+    $('pgListe').innerHTML = kay.length ? akisHtml(kay, gunAnahtar(Date.now()), new Set()) : '<p class="bos">Bugün bu kartta kayıt yok.</p>';
+  }
+  const kartTik = e => { const k = e.target.closest('.pk'); if (k) panelGunAc(k.dataset.anahtar, k.dataset.ad); };
+  ['pnMakine', 'pnIstasyon'].forEach(id => {
+    $(id).addEventListener('click', kartTik);
+    $(id).addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); kartTik(e); } });
+  });
+  $('pgGeri').addEventListener('click', () => panelAc(null));
   function panelGir() { if (S.panel) panelAc(null); else sifreAc('panel'); }
   $('bPanelG').addEventListener('click', panelGir);
   $('bPanelA').addEventListener('click', panelGir);
