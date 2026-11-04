@@ -609,6 +609,17 @@ body.tv .mola-bant { font-size: 20px; }
   let S = yukle() || {};
   S.kisiler = S.kisiler || {}; S.kuyruk = S.kuyruk || []; S.senk = S.senk || { son: null, hata: '' };
   S.cihaz = S.cihaz || yeniNo('T');
+  // Tek seferlik temizlik: ?sifirla=TORNA ile açılınca o bölümün bu tabletteki kayıtları (açık sipariş, geçmiş, gönderilmemiş) silinir
+  (function () {
+    const b = new URLSearchParams(location.search).get('sifirla'); if (!b) return;
+    let n = 0;
+    Object.keys(S.kisiler).forEach(a => { if ((S.kisiler[a].kim || {}).bolum === b) { delete S.kisiler[a]; n++; } });
+    S.kuyruk = S.kuyruk.filter(e => (e.kim || {}).bolum !== b);
+    if (S.kimlik && S.kimlik.bolum === b) S.kimlik = null;
+    try { localStorage.setItem(DEPO, JSON.stringify(S)); } catch (e) {}
+    try { history.replaceState(null, '', location.pathname); } catch (e) {}
+    setTimeout(() => toast(b + ' kayıtları bu tabletten silindi (' + n + ' kişi)'), 1500);
+  })();
   let depoHata = false;
   function kaydet() {
     try { localStorage.setItem(DEPO, JSON.stringify(S)); depoHata = false; }
