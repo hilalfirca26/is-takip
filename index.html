@@ -247,6 +247,8 @@ body.tv .mola-bant { font-size: 20px; }
 .kart.islemkart .baslik { font-size: 24px; }
 #ekTornaBas .btn-dev { min-height: 72px; font-size: 20px; }
 #bTbSonra { align-self: center; }
+.secim.uclu { grid-template-columns: repeat(3, 1fr); }
+#sAltAlan, #sMalzAlan, #sOlcu { margin-top: 8px; }
 </style>
 </head>
 <body>
@@ -373,12 +375,23 @@ body.tv .mola-bant { font-size: 20px; }
         <input type="radio" name="sTip" id="sTipS" value="Silindir"><label for="sTipS">Silindir</label>
         <input type="radio" name="sTip" id="sTipD" value="Dairesel"><label for="sTipD">Dairesel</label>
       </div>
-      <div class="uc" id="sOlcuS" hidden>
-        <div class="alan"><label for="sGobek">Göbek çapı (mm)<i>*</i></label><input id="sGobek" inputmode="decimal" autocomplete="off"></div>
-        <div class="alan"><label for="sDis">Dış çap (mm)<i>*</i></label><input id="sDis" inputmode="decimal" autocomplete="off"></div>
-        <div class="alan"><label for="sBoy">Boy (mm)<i>*</i></label><input id="sBoy" inputmode="decimal" autocomplete="off"></div>
+      <div id="sAltAlan" hidden>
+        <span class="etiket" id="sAltEt">Türü<i>*</i></span>
+        <div class="secim uclu" role="radiogroup" aria-labelledby="sAltEt" id="sAlt"></div>
       </div>
-      <div class="alan" id="sOlcuD" hidden><label for="sCap">Çap (mm)<i>*</i></label><input id="sCap" inputmode="decimal" autocomplete="off"></div>
+      <div id="sMalzAlan" hidden>
+        <span class="etiket" id="sMalzEt">Levha malzemesi<i>*</i></span>
+        <div class="secim uclu" role="radiogroup" aria-labelledby="sMalzEt">
+          <input type="radio" name="sMalz" id="sMalzPE" value="PE"><label for="sMalzPE">PE</label>
+          <input type="radio" name="sMalz" id="sMalzPP" value="PP"><label for="sMalzPP">PP</label>
+          <input type="radio" name="sMalz" id="sMalzPVC" value="PVC"><label for="sMalzPVC">PVC</label>
+        </div>
+      </div>
+      <div class="uc" id="sOlcu" hidden>
+        <div class="alan" id="aGobek"><label for="sGobek">Göbek çapı (mm)<i>*</i></label><input id="sGobek" inputmode="decimal" autocomplete="off"></div>
+        <div class="alan" id="aDis"><label for="sDis" id="lDis">Dış çap (mm)<i>*</i></label><input id="sDis" inputmode="decimal" autocomplete="off"></div>
+        <div class="alan" id="aBoy"><label for="sBoy">Boy (mm)<i>*</i></label><input id="sBoy" inputmode="decimal" autocomplete="off"></div>
+      </div>
     </div>
     <p class="sub" id="sAdetNot">Siparişin bir kısmı önceden yapıldıysa sadece kalanı yazın (örn. 32'nin 9'u yapıldıysa 23).</p>
     <p class="sub" id="bSureNot">Süre “Siparişi Başlat”a bastığınız anda başlar. Adet, fire ve delik bilgilerini işi bitirince gireceksiniz.</p>
@@ -897,7 +910,7 @@ body.tv .mola-bant { font-size: 20px; }
     $('kDurus').hidden = !d; $('bDurusBaslat').hidden = !!d;
     $('kBosluk').hidden = !b;
     if (s) {
-      $('kSipNo').textContent = 'Sipariş ' + s.no + (s.siparisTip ? ' · ' + s.siparisTip + ' ' + olcuYaz(s) : '');
+      $('kSipNo').textContent = 'Sipariş ' + s.no + (s.siparisTip ? ' · ' + tipYazi(s) : '');
       $('kSipBas').textContent = 'Başladı ' + saatYaz(s.bas) + (s.sipAdet ? ' · ' + s.sipAdet + ' adet yapılacak' : '');
       sipUyariGoster(s);
       $('kSipNot').hidden = !(s.notlar && s.notlar.length);
@@ -965,7 +978,7 @@ body.tv .mola-bant { font-size: 20px; }
       return '<li class="t-siparis"><span class="saat">' + saatYaz(x.bit) + '</span><span class="bas">■ Sipariş ' + esc(x.no) +
         (x.sonuc === 'Yarım bırakıldı' ? ' yarım bırakıldı' : ' kapandı') + (x.isaret ? ' · ' + esc(x.isaret) : '') + kimEk(x) + '</span><span class="det"><span class="mono">' + adetYazi(x) + '</span> adet' + (Number(x.kalan) > 0 ? ' · <b>kalan ' + esc(x.kalan) + '</b>' : '') +
         (Number(x.fire) ? ' · ' + esc(x.fire) + ' fire' : '') + (x.delik !== '' && x.delik != null ? ' · ' + esc(x.delik) + ' delik' : '') +
-        (x.siparisTip ? ' · ' + esc(x.siparisTip) + ' ' + esc(olcuYaz(x)) : '') +
+        (x.siparisTip ? ' · ' + esc(tipYazi(x)) : '') +
         ' · ' + saatYaz(x.bas) + '–' + saatYaz(x.bit) + ' · ' + esc(x.brut) + ' dk' + (Number(x.durus) ? ' · ' + esc(x.durus) + ' dk duruş' : '') + bek + notlar +
         (x.islemler && x.islemler.length ? '<span class="acik">İşlemler: ' + x.islemler.map(i => esc(i.ad) + ' ' + esc(i.dk) + ' dk' + (i.adet !== '' && i.adet != null ? ' · ' + esc(i.adet) + ' ad' : '')).join(' | ') + '</span>' : '') +
         (yazabilir() ? '<span class="islem"><button type="button" class="link" data-not="' + esc(x.id) + '">Not ekle</button>' +
@@ -1056,7 +1069,9 @@ body.tv .mola-bant { font-size: 20px; }
 
   /* ---------- Torna: sipariş içinde işlemler ---------- */
   function tornaMi() { return !!kimlik && /TORNA/i.test(kimlik.bolum); }
-  function olcuYaz(x) { return x.siparisTip === 'Silindir' ? [x.gobek, x.dis, x.boy].join('x') : (x.dis !== '' && x.dis != null ? 'Ø' + x.dis : ''); }
+  function olcuYaz(x) { return x.siparisTip === 'Silindir' ? [x.gobek, x.dis, x.boy].join('x') : (x.dis !== '' && x.dis != null ? 'Ø' + x.dis : '') + (x.gobek !== '' && x.gobek != null ? ' göbek ' + x.gobek : ''); }
+  /** "Dairesel Levha PVC Ø150 göbek 10" gibi tek satır. */
+  function tipYazi(x) { return [x.siparisTip, x.altTip, x.malzeme].filter(Boolean).join(' ') + ' ' + olcuYaz(x); }
   /** Siparişin tipine göre gösterilecek işlemler (Ayarlar - Torna İşlemleri). */
   function islemListesi(tip) { return (AYAR.islemler || VARSAYILAN.islemler).filter(x => !tip || !x.tip || x.tip === 'İkisi de' || x.tip === tip); }
   /** İşlemin süresi: molalar ve içindeki duruşlar düşülür (ekranda duruşta sayaç durur). */
@@ -1071,36 +1086,69 @@ body.tv .mola-bant { font-size: 20px; }
     return Math.max(0, ms);
   }
   const sayiMi = x => x !== '' && !isNaN(x) && x > 0;
-  /** Sipariş başlatırken tip ve ölçü: {siparisTip, gobek, dis, boy} ya da {hata, alan}. */
+  const ALT_TIP = { Silindir: ['Hazır taban', 'Çubuk', 'Boru'], Dairesel: ['Eski kalıp', 'Yeni kalıp', 'Levha'] };
+  const GOBEK_VARS = { 'Eski kalıp': 68, 'Levha': 10 }; // hazır gelen göbek çapı, değiştirilebilir
+  let gobekOto = false;
+  const secili = n => { const r = document.querySelector('input[name="' + n + '"]:checked'); return r ? r.value : ''; };
+  /** Sipariş başlatırken tip, tür, malzeme ve ölçü: {siparisTip, altTip, malzeme, gobek, dis, boy} ya da {hata, alan}. */
   function tornaOlcuOku() {
-    const tip = document.querySelector('input[name="sTip"]:checked');
-    if (!tip) return { hata: 'Silindir mi dairesel mi, seçin.' };
-    if (tip.value === 'Dairesel') {
-      const c = sayi($('sCap').value);
-      if (!sayiMi(c)) return { hata: 'Çapı mm olarak yazın.', alan: 'sCap' };
-      return { siparisTip: 'Dairesel', gobek: '', dis: c, boy: '' };
-    }
-    const o = { siparisTip: 'Silindir', gobek: sayi($('sGobek').value), dis: sayi($('sDis').value), boy: sayi($('sBoy').value) };
-    for (const [a, id, ad] of [['gobek', 'sGobek', 'Göbek çapını'], ['dis', 'sDis', 'Dış çapı'], ['boy', 'sBoy', 'Boyu']]) if (!sayiMi(o[a])) return { hata: ad + ' mm olarak yazın.', alan: id };
+    const tip = secili('sTip'); if (!tip) return { hata: 'Silindir mi dairesel mi, seçin.' };
+    const alt = secili('sAlt'); if (!alt) return { hata: 'Türünü seçin (' + ALT_TIP[tip].join(' / ') + ').' };
+    const malz = alt === 'Levha' ? secili('sMalz') : '';
+    if (alt === 'Levha' && !malz) return { hata: 'Levha malzemesini seçin (PE / PP / PVC).' };
+    const sil = tip === 'Silindir', gob = !$('aGobek').hidden;
+    const o = { siparisTip: tip, altTip: alt, malzeme: malz, gobek: gob ? sayi($('sGobek').value) : '', dis: sayi($('sDis').value), boy: sil ? sayi($('sBoy').value) : '' };
+    if (gob && !sayiMi(o.gobek)) return { hata: 'Göbek çapını mm olarak yazın.', alan: 'sGobek' };
+    if (!sayiMi(o.dis)) return { hata: (sil ? 'Dış çapı' : 'Çapı') + ' mm olarak yazın.', alan: 'sDis' };
+    if (sil && !sayiMi(o.boy)) return { hata: 'Boyu mm olarak yazın.', alan: 'sBoy' };
     return o;
   }
-  function tornaTipGoster() {
-    const t = document.querySelector('input[name="sTip"]:checked');
-    $('sOlcuS').hidden = !t || t.value !== 'Silindir'; $('sOlcuD').hidden = !t || t.value !== 'Dairesel';
+  /** Seçime göre tür / malzeme / ölçü kutularını gösterir; altDegisti: türe göre göbek çapını hazır doldurur. */
+  function tornaTipGoster(altDegisti) {
+    const t = secili('sTip');
+    $('sAltAlan').hidden = !t;
+    if (t && $('sAlt').dataset.tip !== t) {
+      $('sAlt').dataset.tip = t;
+      $('sAlt').innerHTML = ALT_TIP[t].map((a, i) => '<input type="radio" name="sAlt" id="sAlt' + i + '" value="' + esc(a) + '"><label for="sAlt' + i + '">' + esc(a) + '</label>').join('');
+    }
+    const alt = secili('sAlt'), sil = t === 'Silindir';
+    $('sMalzAlan').hidden = alt !== 'Levha';
+    $('sOlcu').hidden = !alt;
+    $('aGobek').hidden = !sil && alt === 'Yeni kalıp';
+    $('aBoy').hidden = !sil;
+    $('lDis').innerHTML = (sil ? 'Dış çap' : 'Çap') + ' (mm)<i>*</i>';
+    if (altDegisti) {
+      const v = sil ? null : GOBEK_VARS[alt];
+      if (v != null && (!$('sGobek').value || gobekOto)) { $('sGobek').value = v; gobekOto = true; }
+      else if (v == null && gobekOto) { $('sGobek').value = ''; gobekOto = false; }
+    }
   }
-  document.querySelectorAll('input[name="sTip"]').forEach(r => r.addEventListener('change', () => { tornaTipGoster(); (r.value === 'Silindir' ? $('sGobek') : $('sCap')).focus(); }));
-  /** Yarım kalan siparişe devam: önceki parçanın tip ve ölçüsü. */
+  function tornaFormSifirla() {
+    ['sTip', 'sMalz'].forEach(n => document.querySelectorAll('input[name="' + n + '"]').forEach(r => r.checked = false));
+    $('sAlt').innerHTML = ''; $('sAlt').dataset.tip = '';
+    ['sGobek', 'sDis', 'sBoy'].forEach(id => { $(id).value = ''; $(id).classList.remove('hatali'); });
+    gobekOto = false; tornaTipGoster();
+  }
+  document.querySelectorAll('input[name="sTip"]').forEach(r => r.addEventListener('change', () => {
+    if (gobekOto) { $('sGobek').value = ''; gobekOto = false; }
+    tornaTipGoster();
+  }));
+  $('sAlt').addEventListener('change', () => { tornaTipGoster(true); const ilk = ['sGobek', 'sDis', 'sBoy'].find(id => !$(id).closest('.alan').hidden && !$(id).value); if (ilk && secili('sAlt') !== 'Levha') $(ilk).focus(); });
+  $('sGobek').addEventListener('input', () => { gobekOto = false; });
+  /** Yarım kalan siparişe devam: önceki parçanın tip, tür, malzeme ve ölçüsü. */
   function tornaOlcuYaz(p) {
     document.querySelectorAll('input[name="sTip"]').forEach(r => r.checked = r.value === p.siparisTip);
     tornaTipGoster();
-    if (p.siparisTip === 'Silindir') { $('sGobek').value = p.gobek == null ? '' : p.gobek; $('sDis').value = p.dis == null ? '' : p.dis; $('sBoy').value = p.boy == null ? '' : p.boy; }
-    else $('sCap').value = p.dis == null ? '' : p.dis;
+    document.querySelectorAll('input[name="sAlt"]').forEach(r => r.checked = r.value === p.altTip);
+    document.querySelectorAll('input[name="sMalz"]').forEach(r => r.checked = r.value === p.malzeme);
+    tornaTipGoster();
+    $('sGobek').value = p.gobek == null ? '' : p.gobek; $('sDis').value = p.dis == null ? '' : p.dis; $('sBoy').value = p.boy == null ? '' : p.boy; gobekOto = false;
   }
   /** Sipariş açıldıktan sonra: ayarla başla / doğrudan işleme geç. */
   function tornaBasAc() {
     const s = K().siparis; if (!s) return;
     $('tbBaslik').textContent = 'Sipariş ' + s.no + ' başladı';
-    $('tbAlt').textContent = (s.siparisTip ? s.siparisTip + ' ' + olcuYaz(s) + ' · ' : '') + s.sipAdet + ' adet';
+    $('tbAlt').textContent = (s.siparisTip ? tipYazi(s) + ' · ' : '') + s.sipAdet + ' adet';
     goster('ekTornaBas');
   }
   $('bTbSonra').addEventListener('click', () => { goster('ekAna'); ciz(); });
@@ -1123,7 +1171,7 @@ body.tv .mola-bant { font-size: 20px; }
     iSecili = ''; iBas = bas || null;
     $('iIslemler').innerHTML = islemListesi(s.siparisTip).map(x => '<button type="button" class="neden" aria-pressed="false">' + esc(x.ad) + '</button>').join('');
     $('iAcik').value = ''; $('iAcik').classList.remove('hatali'); $('iAcikAlan').hidden = true;
-    $('iAlt').textContent = 'Sipariş ' + s.no + (s.siparisTip ? ' · ' + s.siparisTip + ' ' + olcuYaz(s) : '') + ' · ' + etiket();
+    $('iAlt').textContent = 'Sipariş ' + s.no + (s.siparisTip ? ' · ' + tipYazi(s) : '') + ' · ' + etiket();
     const biten = (s.islemler || []).map(x => x.ad);
     $('iNot').textContent = (iBas ? 'İşlem ' + saatYaz(iBas) + '’den başlamış sayılacak. ' : '') + (biten.length ? 'Bu siparişte biten: ' + biten.join(', ') : '');
     hata('iHata', ''); goster('ekIslem');
@@ -1221,9 +1269,7 @@ body.tv .mola-bant { font-size: 20px; }
       : 'Süre “Siparişi Başlat”a bastığınız anda başlar. Adet, fire ve delik bilgilerini işi bitirince gireceksiniz.';
     $('sAdetIpucu').hidden = true; sAdetOto = false;
     $('sTorna').hidden = !tornaMi();
-    document.querySelectorAll('input[name="sTip"]').forEach(r => r.checked = false);
-    ['sGobek', 'sDis', 'sBoy', 'sCap'].forEach(id => { $(id).value = ''; $(id).classList.remove('hatali'); });
-    $('sOlcuS').hidden = $('sOlcuD').hidden = true;
+    tornaFormSifirla();
     $('bSureNot').textContent = tornaMi() ? 'Süre “Siparişi Başlat”a bastığınız anda başlar. Sonra ayar ya da işlem seçeceksiniz.' : $('bSureNot').textContent;
     hata('bHata', ''); goster('ekBaslat');
     if (devamNo) { $('sNo').value = devamNo; devamNo = null; $('sNo').dispatchEvent(new Event('input')); $('altOnay').focus(); }
@@ -1558,7 +1604,7 @@ body.tv .mola-bant { font-size: 20px; }
       if (tanim.aciklama && !ac) { $('iAcik').classList.add('hatali'); $('iAcik').focus(); return hata('iHata', 'Ne yapıldığını kısaca yazın (örn. kama açma).'); }
       if (s.islem) return hata('iHata', 'Süren bir işlem var (' + s.islem.ad + '). Önce onu bitirin.');
       const id = yeniNo('I'), t = (iBas && iBas > new Date(s.bas) ? iBas : simdi).toISOString();
-      olay(k, 'IB', { id, islem: iSecili, aciklama: ac, sipId: s.id, sipNo: s.no, siparisTip: s.siparisTip || '', gobek: s.gobek, dis: s.dis, boy: s.boy, t });
+      olay(k, 'IB', { id, islem: iSecili, aciklama: ac, sipId: s.id, sipNo: s.no, siparisTip: s.siparisTip || '', altTip: s.altTip || '', malzeme: s.malzeme || '', gobek: s.gobek, dis: s.dis, boy: s.boy, t });
       s.islem = { id, ad: iSecili, aciklama: ac, bas: t };
       iBas = null;
       return bitti(iSecili + ' başladı');
@@ -1629,7 +1675,7 @@ body.tv .mola-bant { font-size: 20px; }
         sonuc: sonuc.value, not: $('kpNot').value.trim(), isaret: isaretYazi }, kontrol);
       k.gecmis.push({ tur: 'siparis', id: s.id, no: s.no, bas: s.bas, bit: bitis.toISOString(), brut, durus: ds, adet, fire: fire === '' ? 0 : fire,
         sipAdet: s.sipAdet == null ? '' : s.sipAdet, kalan: kalanHesap(s.sipAdet, adet),
-        siparisTip: s.siparisTip || '', gobek: s.gobek, dis: s.dis, boy: s.boy, islemler: s.islemler || [],
+        siparisTip: s.siparisTip || '', altTip: s.altTip || '', malzeme: s.malzeme || '', gobek: s.gobek, dis: s.dis, boy: s.boy, islemler: s.islemler || [],
         sonuc: sonuc.value, isaret: isaretYazi, oid: ev.oid, delik: cnc ? del : '', yatay: cnc ? yat : '', dikey: cnc ? dik : '', notlar: (s.notlar || []).concat($('kpNot').value.trim() ? [{ t: simdi.toISOString(), metin: $('kpNot').value.trim() }] : []) });
       k.siparis = null;
       // Bitiş geriye alındıysa arada kalan süreyi hemen sor
