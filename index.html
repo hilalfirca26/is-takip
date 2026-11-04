@@ -631,6 +631,23 @@ body.tv .mola-bant { font-size: 20px; }
     try { history.replaceState(null, '', location.pathname); } catch (e) {}
     setTimeout(() => toast(b + ' kayıtları bu tabletten silindi (' + n + ' kişi)'), 1500);
   })();
+  // Tek seferlik otomatik temizlik: torna deneme girişleri (bu saatten önceki TORNA kayıtları) her tabletten bir kez silinir
+  (function () {
+    S.temizlik = S.temizlik || {};
+    if (S.temizlik.torna1) return;
+    const SINIR = Date.parse('2026-11-04T14:00:00Z'), once = t => !t || Date.parse(t) < SINIR;
+    Object.keys(S.kisiler).forEach(a => {
+      const k = S.kisiler[a]; if ((k.kim || {}).bolum !== 'TORNA') return;
+      k.gecmis = (k.gecmis || []).filter(g => !once(g.bas));
+      if (k.siparis && once(k.siparis.bas)) { k.siparis = null; k.durus = null; }
+      if (k.durus && once(k.durus.bas)) k.durus = null;
+      k.aciklanan = (k.aciklanan || []).filter(x => !once(x.bas));
+      if (!k.siparis && !k.durus && !k.gecmis.length) delete S.kisiler[a];
+    });
+    S.kuyruk = S.kuyruk.filter(e => (e.kim || {}).bolum !== 'TORNA' || !once(e.t));
+    S.temizlik.torna1 = true;
+    try { localStorage.setItem(DEPO, JSON.stringify(S)); } catch (e) {}
+  })();
   let depoHata = false;
   function kaydet() {
     try { localStorage.setItem(DEPO, JSON.stringify(S)); depoHata = false; }
