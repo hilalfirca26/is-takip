@@ -1,5 +1,5 @@
 /* Hilal Fırça İş Takip – çevrimdışı önbellek */
-const SURUM = 'hf-istakip-26';
+const SURUM = 'hf-istakip-27';
 const DOSYALAR = ['./', './index.html', './manifest.webmanifest', './ikon-192.png', './ikon-512.png'];
 
 self.addEventListener('install', e => {

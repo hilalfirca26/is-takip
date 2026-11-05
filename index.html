@@ -502,6 +502,7 @@ body.tv .mola-bant { font-size: 20px; }
       </div>
     </div>
     <div class="alan"><label for="kpNot">Not</label><textarea id="kpNot" placeholder="İsteğe bağlı"></textarea></div>
+    <button class="btn btn-ikincil" id="bMesai" type="button" hidden>Mesaiye kalıyorum, sipariş açık kalsın</button>
     <p class="uyari" id="kpUyari" hidden></p>
     <p class="hata" id="kpHata" hidden></p>
   </section>
@@ -1007,6 +1008,27 @@ body.tv .mola-bant { font-size: 20px; }
     listeCiz();
   }
   /** Gün sonu başlangıcı: o günün standart temizliğinin başı (yoksa vardiya bitişi). */
+  /* ---------- Gün sonu: açık sipariş için "kaç adet yaptın?" kendiliğinden sorulur ---------- */
+  let gsModu = false, gsSaat = '', gsZaman = null;
+  function gunSonuKontrol() {
+    const k = K(), s = k.siparis; if (!s || izleme()) return false;
+    const gs = gunSonuBas(s.bas), now = new Date();
+    if (!(now >= gs) || !(new Date(s.bas) < gs) || s.gunSonuSoruldu === gunAnahtar(now)) return false;
+    s.gunSonuSoruldu = gunAnahtar(now); kaydet();
+    gsModu = true; gsZaman = gs; gsSaat = saatYaz(gs);
+    $('bSipKapat').click();
+    return true;
+  }
+  function gunSonuUygula() {
+    const s = K().siparis; if (!s || !gsModu || ekran !== 'ekKapat') return;
+    $('kpBaslik').textContent = 'Gün bitti · Sipariş ' + s.no;
+    $('kpBitisAlan').hidden = false; $('kpBitisAc').hidden = true; $('kpBitis').value = gsSaat;
+    $('kpBitisIpucu').textContent = 'Bitiş gün sonu (' + gsSaat + ') olarak yazıldı. Bugün kaç adet yaptığını gir; sipariş bitmediyse “Yarım bıraktım” seçili kalsın.';
+    if (!document.querySelector('input[name="kpSonuc"]:checked')) $('kpYarim').checked = true;
+    $('bMesai').hidden = gunAnahtar(s.bas) !== gunAnahtar(Date.now());
+    kapatOzet();
+  }
+  $('bMesai').addEventListener('click', () => { gsModu = false; $('bMesai').hidden = true; goster('ekAna'); ciz(); toast('Mesai: sipariş açık, bitince kendin kapat'); });
   function gunSonuBas(g) {
     const t = vd().temizlik || {}, l = (new Date(g).getDay() === 5 ? t.cuma : t.diger) || [];
     return saatte(g, l.length ? l[0][0] : vd().bitis);
@@ -1080,6 +1102,7 @@ body.tv .mola-bant { font-size: 20px; }
   function tik() {
     if (Date.now() - sonOto > 30000) { sonOto = Date.now(); if (otoKapat()) return ciz(); }
     if (!kimlik || ekran === 'ekGiris' || ekran === 'ekYukle') return;
+    if (ekran === 'ekAna' && !mesgul && gunSonuKontrol()) return;
     const k = K(), mola = molaSimdi(gunMolaListe(new Date()));
     $('kMola').hidden = !mola;
     if (mola) $('kMola').innerHTML = '<b>' + mola.ad + ' (' + mola.bas + '–' + mola.bit + ')</b> · Süreler mola bitene kadar durdu, kendiliğinden devam eder. Mola için duruş girmeyin.';
@@ -1419,7 +1442,8 @@ body.tv .mola-bant { font-size: 20px; }
     if (adet === '' || !Number.isInteger(adet) || adet < 0) { $('ibAdet').classList.add('hatali'); $('ibAdet').focus(); return hata('ibHata', 'Bu bağlamada kaç parça yapıldığını yazın.'); }
     const simdi = new Date(), dun = gunAnahtar(i.bas) !== gunAnahtar(simdi);
     let bit = simdi, isaret = '';
-    if (dun) { const gs = gunSonuBas(i.bas); bit = gs > new Date(i.bas) ? gs : saatte(i.bas, vd().bitis); isaret = 'Önceki günden kapatıldı'; }
+    if (gsModu && !dun && gsZaman && simdi > gsZaman && gsZaman > new Date(i.bas)) { bit = gsZaman; isaret = 'Gün sonunda kapatıldı'; }
+    else if (dun) { const gs = gunSonuBas(i.bas); bit = gs > new Date(i.bas) ? gs : saatte(i.bas, vd().bitis); isaret = 'Önceki günden kapatıldı'; }
     else if (!$('ibOnceAlan').hidden && $('ibOnce').value.trim()) {
       const d = sayi($('ibOnce').value);
       if (!Number.isInteger(d) || d <= 0) { $('ibOnce').classList.add('hatali'); return hata('ibHata', 'Kaç dakika önce bittiğini tam sayı olarak yazın.'); }
@@ -1558,6 +1582,7 @@ body.tv .mola-bant { font-size: 20px; }
     }
     kalanGoster();
     hata('kpHata', ''); kapatOzet(); goster('ekKapat'); $('kpAdet').focus();
+    $('bMesai').hidden = true; if (gsModu) gunSonuUygula();
   });
   /** Kapatırken: yazılan üretim adedine göre kalan adet. */
   function kalanGoster() {
@@ -1817,6 +1842,7 @@ body.tv .mola-bant { font-size: 20px; }
   $('altIptal').addEventListener('click', () => {
     if (geriOzet && (ekran === 'ekNot' || ekran === 'ekDuzelt')) { geriOzet = false; return ozetAc(ozetGun); }
     if (ekran === 'ekSifre' && sifreAmac === 'panel' && !kimlik) { girisDoldur(); return goster('ekGiris'); }
+    gsModu = false;
     goster('ekAna'); ciz();
   });
   $('altOnay').addEventListener('click', () => {
@@ -1887,7 +1913,9 @@ body.tv .mola-bant { font-size: 20px; }
       if (!sonuc) { $('kpBitti').focus(); return hata('kpHata', 'Siparişin bitip bitmediğini seçin.'); }
       let bitis = simdi, isaretYazi = '', kontrol = null;
       const bs = $('kpBitisAlan').hidden ? '' : $('kpBitis').value;
-      if (bs) {
+      if (bs && gsModu && bs === gsSaat) { // gün sonu ekranından: düzeltme sayılmaz
+        bitis = saatte(s.bas, bs); isaretYazi = 'Gün sonunda kapatıldı';
+      } else if (bs) {
         bitis = saatte(s.bas, bs);
         if (!(bitis > new Date(s.bas)) || bitis > simdi) return isaret('kpBitis', 'Bitiş saati, başlangıçtan (' + saatYaz(s.bas) + ') sonra ve şu andan önce olmalı.');
         isaretYazi = 'Bitiş düzeltildi';
@@ -1919,7 +1947,7 @@ body.tv .mola-bant { font-size: 20px; }
         sipAdet: s.sipAdet == null ? '' : s.sipAdet, kalan: kalanHesap(s.sipAdet, adet),
         siparisTip: s.siparisTip || '', altTip: s.altTip || '', malzeme: s.malzeme || '', gobek: s.gobek, dis: s.dis, boy: s.boy, islemler: s.islemler || [],
         sonuc: sonuc.value, isaret: isaretYazi, oid: ev.oid, delik: cnc ? del : '', yatay: cnc ? yat : '', dikey: cnc ? dik : '', notlar: (s.notlar || []).concat($('kpNot').value.trim() ? [{ t: simdi.toISOString(), metin: $('kpNot').value.trim() }] : []) });
-      k.siparis = null;
+      k.siparis = null; gsModu = false;
       // Bitiş geriye alındıysa arada kalan süreyi hemen sor
       const kal = kalanHesap(s.sipAdet, adet);
       return bitti('Sipariş ' + s.no + ' kapatıldı' + (kal > 0 ? ' · kalan ' + kal + ' adet' : ''), () => { if (bosluk()) boslukAc(null); });
