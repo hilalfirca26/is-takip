@@ -260,6 +260,8 @@ body.tv .mola-bant { font-size: 20px; }
 .onay-kutu { display: flex; align-items: center; gap: 12px; min-height: 54px; padding: 8px 14px; border: 1.5px solid var(--line); border-radius: var(--r); background: var(--surface); font-weight: 600; cursor: pointer; }
 .onay-kutu input { width: 26px; height: 26px; min-height: 0; accent-color: var(--stop); flex: none; }
 .onay-kutu:has(input:checked) { border-color: var(--stop); background: var(--stop-soft); }
+.secim.dortlu { grid-template-columns: repeat(4, 1fr); }
+@media (max-width: 520px) { .secim.dortlu { grid-template-columns: repeat(2, 1fr); } }
 </style>
 </head>
 <body>
@@ -382,9 +384,10 @@ body.tv .mola-bant { font-size: 20px; }
     <p class="sub" id="sAdetIpucu" hidden></p>
     <div id="sTorna" hidden>
       <span class="etiket" id="sTipEt">Ne yapılıyor?<i>*</i></span>
-      <div class="secim" role="radiogroup" aria-labelledby="sTipEt">
+      <div class="secim uclu" role="radiogroup" aria-labelledby="sTipEt">
         <input type="radio" name="sTip" id="sTipS" value="Silindir"><label for="sTipS">Silindir</label>
         <input type="radio" name="sTip" id="sTipD" value="Dairesel"><label for="sTipD">Dairesel</label>
+        <input type="radio" name="sTip" id="sTipA" value="Aparat"><label for="sTipA">Aparat</label>
       </div>
       <div id="sAltAlan" hidden>
         <span class="etiket" id="sAltEt">Türü<i>*</i></span>
@@ -1144,7 +1147,7 @@ body.tv .mola-bant { font-size: 20px; }
   function tornaMi() { return !!kimlik && /TORNA/i.test(kimlik.bolum); }
   function olcuYaz(x) { return x.siparisTip === 'Silindir' ? [x.gobek, x.dis, x.boy].join('x') : (x.dis !== '' && x.dis != null ? 'Ø' + x.dis : '') + (x.gobek !== '' && x.gobek != null ? ' göbek ' + x.gobek : ''); }
   /** "Dairesel Levha PVC Ø150 göbek 10" gibi tek satır. */
-  function tipYazi(x) { return [x.siparisTip, x.altTip, x.malzeme].filter(Boolean).join(' ') + ' ' + olcuYaz(x); }
+  function tipYazi(x) { return x.siparisTip === 'Aparat' ? 'Aparat · ' + (x.altTip || '') : [x.siparisTip, x.altTip, x.malzeme].filter(Boolean).join(' ') + ' ' + olcuYaz(x); }
   /** Siparişin tipine göre gösterilecek işlemler (Ayarlar - Torna İşlemleri). */
   function islemListesi(tip) { return (AYAR.islemler || VARSAYILAN.islemler).filter(x => !tip || !x.tip || x.tip === 'İkisi de' || x.tip === tip); }
   /** "Alın tornalama + Boylama · 1. taraf" */
@@ -1175,13 +1178,18 @@ body.tv .mola-bant { font-size: 20px; }
   }
   const sayiMi = x => x !== '' && !isNaN(x) && x > 0;
   const ALT_TIP = { Silindir: ['Hazır taban', 'Çubuk', 'Boru'], Dairesel: ['Eski kalıp', 'Yeni kalıp', 'Levha'] };
+  /** Türler; aparatta "hangi makineye": önce CNC makineleri, sonra tornalar (Ayarlar'daki makine listesi). */
+  const altListe = t => t === 'Aparat' ? Object.keys(AYAR.makineler || {}).sort((a, b) => (/CNC/i.test(b) ? 1 : 0) - (/CNC/i.test(a) ? 1 : 0))
+    .reduce((l, b) => l.concat(AYAR.makineler[b] || []), []) : (ALT_TIP[t] || []);
   const GOBEK_VARS = { 'Eski kalıp': 68, 'Levha': 10 }; // hazır gelen göbek çapı, değiştirilebilir
   let gobekOto = false;
   const secili = n => { const r = document.querySelector('input[name="' + n + '"]:checked'); return r ? r.value : ''; };
   /** Sipariş başlatırken tip, tür, malzeme ve ölçü: {siparisTip, altTip, malzeme, gobek, dis, boy} ya da {hata, alan}. */
   function tornaOlcuOku() {
     const tip = secili('sTip'); if (!tip) return { hata: 'Silindir mi dairesel mi, seçin.' };
-    const alt = secili('sAlt'); if (!alt) return { hata: 'Türünü seçin (' + ALT_TIP[tip].join(' / ') + ').' };
+    const alt = secili('sAlt');
+    if (tip === 'Aparat') return alt ? { siparisTip: tip, altTip: alt, malzeme: '', gobek: '', dis: '', boy: '' } : { hata: 'Aparatın hangi makineye yapıldığını seçin.' };
+    if (!alt) return { hata: 'Türünü seçin (' + ALT_TIP[tip].join(' / ') + ').' };
     const malz = alt === 'Levha' ? secili('sMalz') : '';
     if (alt === 'Levha' && !malz) return { hata: 'Levha malzemesini seçin (PE / PP / PVC).' };
     const sil = tip === 'Silindir', gob = !$('aGobek').hidden;
@@ -1198,11 +1206,13 @@ body.tv .mola-bant { font-size: 20px; }
     if (t) sBag.tipDegisti(t);
     if (t && $('sAlt').dataset.tip !== t) {
       $('sAlt').dataset.tip = t;
-      $('sAlt').innerHTML = ALT_TIP[t].map((a, i) => '<input type="radio" name="sAlt" id="sAlt' + i + '" value="' + esc(a) + '"><label for="sAlt' + i + '">' + esc(a) + '</label>').join('');
+      $('sAltEt').innerHTML = t === 'Aparat' ? 'Hangi makineye aparat?<i>*</i>' : 'Türü<i>*</i>';
+      $('sAlt').className = 'secim ' + (t === 'Aparat' ? 'dortlu' : 'uclu');
+      $('sAlt').innerHTML = altListe(t).map((a, i) => '<input type="radio" name="sAlt" id="sAlt' + i + '" value="' + esc(a) + '"><label for="sAlt' + i + '">' + esc(a) + '</label>').join('');
     }
     const alt = secili('sAlt'), sil = t === 'Silindir';
     $('sMalzAlan').hidden = alt !== 'Levha';
-    $('sOlcu').hidden = !alt;
+    $('sOlcu').hidden = !alt || t === 'Aparat'; // aparatta ölçü sorulmaz
     $('aGobek').hidden = !sil && alt === 'Yeni kalıp';
     $('aBoy').hidden = !sil;
     $('lDis').innerHTML = (sil ? 'Dış çap' : 'Çap') + ' (mm)<i>*</i>';
