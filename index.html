@@ -431,18 +431,16 @@ body.tv .mola-bant { font-size: 20px; }
 
   <section id="ekCncBas" hidden>
     <div><h1 id="cbBaslik">Sipariş başladı</h1><p class="sub" id="cbAlt"></p></div>
-    <span class="etiket" id="cbEt">Üretimden önce ne yapacaksın? <span class="etk-not">birden fazla seçebilirsiniz</span></span>
-    <div class="bag" role="group" aria-labelledby="cbEt">
-      <label class="onay-kutu"><input type="checkbox" id="cbKalip"><span>Kalıp değiştirme</span></label>
-      <label class="onay-kutu"><input type="checkbox" id="cbAyar"><span>Ayar <span class="etk-not">ensör, kıl haznesi vb.</span></span></label>
-      <label class="onay-kutu"><input type="checkbox" id="cbProgram"><span>Program tanıtma</span></label>
-    </div>
-    <p class="sub" id="cbNot">Seçilenler sırayla duruş olarak sayılır: kalıp → ayar → program. Her biri bitince “Duruşu Bitir”e basın, sıradaki kendiliğinden başlar; sonuncusu bitince üretim sayılır.</p>
+    <span class="etiket" id="cbEt">Üretimden önce ne yapacaksın?</span>
+    <button class="btn btn-dur-acik btn-dev" id="bCbKalip" type="button" data-neden="KALIP DEĞİŞTİRME">Kalıp değiştirme</button>
+    <button class="btn btn-dur-acik btn-dev" id="bCbAyar" type="button" data-neden="AYAR">Ayar <span class="etk-not">ensör, kıl haznesi vb.</span></button>
+    <button class="btn btn-dur-acik btn-dev" id="bCbProgram" type="button" data-neden="PROGRAM / ÇİZİM">Program tanıtma</button>
+    <p class="sub" id="cbNot">Seçtiğin hemen başlar (duruş sayılır). Bitince “Duruşu Bitir”e bas; kalanlar yeniden sorulur.</p>
     <button class="btn btn-ikincil" id="bCbUretim" type="button">Hiçbiri, doğrudan üretime geç</button>
   </section>
 
   <section id="ekIslem" hidden>
-    <div><h1>Yeni bağlama</h1><p class="sub" id="iAlt"></p></div>
+    <div><h1 id="iBaslik">Yeni bağlama</h1><p class="sub" id="iAlt"></p></div>
     <div class="bag" id="iBag">
       <span class="etiket" id="iBagEt">Bu bağlamada yapılacak işlemler<i>*</i> <span class="etk-not">birden fazla seçebilirsiniz</span></span>
       <div class="nedenler coklu" id="iBagIslem" role="group" aria-labelledby="iBagEt"></div>
@@ -806,7 +804,7 @@ body.tv .mola-bant { font-size: 20px; }
   }
 
   /* ---------- Ekranlar ---------- */
-  const ALT = { ekCncBas: 'Başla', ekIslem: 'Bağlamayı Başlat', ekIslemBitir: 'Yeni Bağlama', ekBaslat: 'Siparişi Başlat', ekKapat: 'Siparişi Kapat', ekDurus: 'Duruşu Başlat', ekBitir: 'Duruşu Bitir', ekBosluk: 'Kaydet ve Devam Et', ekEkle: 'Duruşu Ekle', ekNot: 'Notu Kaydet', ekDuzelt: 'Düzeltmeyi Kaydet', ekSifre: 'Onayla' };
+  const ALT = { ekIslem: 'Bağlamayı Başlat', ekIslemBitir: 'Yeni Bağlama', ekBaslat: 'Siparişi Başlat', ekKapat: 'Siparişi Kapat', ekDurus: 'Duruşu Başlat', ekBitir: 'Duruşu Bitir', ekBosluk: 'Kaydet ve Devam Et', ekEkle: 'Duruşu Ekle', ekNot: 'Notu Kaydet', ekDuzelt: 'Düzeltmeyi Kaydet', ekSifre: 'Onayla' };
   const DUR_EKRAN = { ekDurus: 1, ekBitir: 1, ekEkle: 1 };
   function goster(ad) {
     ekran = ad;
@@ -1163,7 +1161,8 @@ body.tv .mola-bant { font-size: 20px; }
   const birinci = x => /^1\./.test(x || ''), ikinci = x => /^2\./.test(x || '');
   /** Siparişin (önceki parçaları dahil) bağlamalarında 1. ve 2. taraf adetleri: { 'Alın tornalama + Boylama': { b1: 200, b2: 0 } } */
   function tarafDurumu(s) {
-    const o = {}, ekle = x => { if (!x.sira) return; const r = o[x.ad] = o[x.ad] || { b1: 0, b2: 0 }; r[ikinci(x.sira) ? 'b2' : 'b1'] += Number(x.adet) || 0; };
+    // 2. taraf, 1. taraftaki bağlamaya (eslesen) sayılır: öbür tarafta farklı işlemler yapılmış olabilir
+    const o = {}, ekle = x => { if (!x.sira) return; const a = ikinci(x.sira) ? (x.eslesen || x.ad) : x.ad, r = o[a] = o[a] || { b1: 0, b2: 0 }; r[ikinci(x.sira) ? 'b2' : 'b1'] += Number(x.adet) || 0; };
     Object.keys(S.kisiler).forEach(a => { const kk = S.kisiler[a]; if (!kk.kim || kk.kim.bolum !== kimlik.bolum || ayriDunya(kk.kim, kimlik)) return;
       kk.gecmis.forEach(g => { if (g.tur === 'siparis' && String(g.no) === String(s.no) && gecen(g.bit) < 30 * 86400000) (g.islemler || []).forEach(ekle); }); });
     (s.islemler || []).forEach(ekle);
@@ -1172,7 +1171,7 @@ body.tv .mola-bant { font-size: 20px; }
   /** 1. tarafı yapılıp 2. tarafı eksik kalan bağlamalar */
   function bekleyenTaraf(s) { const o = tarafDurumu(s); return Object.keys(o).filter(ad => o[ad].b1 > o[ad].b2).map(ad => ({ ad, b1: o[ad].b1, b2: o[ad].b2 })); }
   /** 2. tarafı bekleyen bağlama varsa seçiciye öneri */
-  function bekleyenOneri(s) { const b = bekleyenTaraf(s)[0]; return b ? { onerilen: b.ad.split(' + '), taraf: '2' } : {}; }
+  function bekleyenOneri(s) { const b = bekleyenTaraf(s)[0]; return b ? { onerilen: b.ad.split(' + '), taraf: '2', eslesen: b.ad } : {}; }
   /** İşlemin süresi: molalar ve içindeki duruşlar düşülür (ekranda duruşta sayaç durur). */
   function islemMs(k, i, bit) {
     bit = bit ? new Date(bit).getTime() : Date.now();
@@ -1260,16 +1259,23 @@ body.tv .mola-bant { font-size: 20px; }
     k.durus = Object.assign({ bas: t }, veri);
   }
   /* ---------- CNC: sipariş başlarken kalıp / ayar / program tanıtma ---------- */
-  const CNC_ONCE = [['cbKalip', 'KALIP DEĞİŞTİRME', 'Kalıp değiştirme'], ['cbAyar', 'AYAR', 'Ayar'], ['cbProgram', 'PROGRAM / ÇİZİM', 'Program tanıtma']];
+  // Biri seçilir ve hemen başlar; bitince kalanlar yeniden sorulur ("Başka yok" = üretime geç)
+  const CNC_ONCE = [['bCbKalip', 'KALIP DEĞİŞTİRME', 'Kalıp değiştirme'], ['bCbAyar', 'AYAR', 'Ayar'], ['bCbProgram', 'PROGRAM / ÇİZİM', 'Program tanıtma']];
   const durusAdi = n => (CNC_ONCE.find(x => x[1] === n) || [0, 0, n])[2];
-  function cncBasAc() {
+  function cncBasAc(yapilan) {
     const s = K().siparis; if (!s) return;
-    $('cbBaslik').textContent = 'Sipariş ' + s.no + ' başladı';
-    $('cbAlt').textContent = s.sipAdet + ' adet · ' + etiket();
-    $('cbKalip').checked = false; $('cbAyar').checked = true; $('cbProgram').checked = false; // ayar genelde yapılır
+    yapilan = yapilan || [];
+    s.hazirlikYapilan = yapilan;
+    const son = yapilan[yapilan.length - 1];
+    $('cbBaslik').textContent = son ? durusAdi(son) + ' bitti' : 'Sipariş ' + s.no + ' başladı';
+    $('cbAlt').textContent = 'Sipariş ' + s.no + ' · ' + s.sipAdet + ' adet · ' + etiket();
+    $('cbEt').textContent = son ? 'Başka ne yapacaksın?' : 'Üretimden önce ne yapacaksın?';
+    CNC_ONCE.forEach(x => $(x[0]).hidden = yapilan.indexOf(x[1]) >= 0);
+    $('bCbUretim').textContent = son ? 'Başka yok, üretime geç' : 'Hiçbiri, doğrudan üretime geç';
+    $('bCbUretim').className = 'btn ' + (son ? 'btn-ana btn-dev' : 'btn-ikincil');
     goster('ekCncBas');
   }
-  /** Siparişe bağlı duruşu kendiliğinden başlatır; sonraki: bu bitince sırayla başlayacak duruşlar. */
+  /** Siparişe bağlı duruşu kendiliğinden başlatır; sonraki: (eski sürümden kalan) bu bitince sırayla başlayacak duruşlar. */
   function durusOto(neden, sonraki) {
     const k = K(), s = k.siparis; if (!s) return goster('ekAna');
     if (k.durus) return bitti('Zaten devam eden bir duruş var');
@@ -1280,19 +1286,22 @@ body.tv .mola-bant { font-size: 20px; }
     s.sonraki = sonraki && sonraki.length ? [].concat(sonraki) : null;
     bitti(durusAdi(neden) + ' başladı · bitince “Duruşu Bitir”e basın');
   }
-  function cncBasla() {
-    const l = CNC_ONCE.filter(x => $(x[0]).checked).map(x => x[1]);
-    if (!l.length) return bitti('Üretim başladı');
-    durusOto(l[0], l.slice(1));
-  }
-  $('bCbUretim').addEventListener('click', () => bitti('Üretim başladı'));
-  /** Sıradaki ön hazırlık (kalıp → ayar → program) bir önceki bitince kendiliğinden başlar. */
+  CNC_ONCE.forEach(x => $(x[0]).addEventListener('click', () => { const s = K().siparis; if (s) s.hazirlikAktif = true; durusOto(x[1]); }));
+  $('bCbUretim').addEventListener('click', () => { const s = K().siparis; if (s) { s.hazirlikAktif = false; s.hazirlikYapilan = null; } bitti('Üretim başladı'); });
+  /** Hazırlık duruşu bitince kalanlar sorulur; hepsi yapıldıysa üretim başlar. */
   function cncSonraki() {
     const k = K(), s = k.siparis;
-    if (!cncMi() || !s || !s.sonraki || k.durus) return;
-    const l = [].concat(s.sonraki); s.sonraki = null;
-    if (!l.length) return;
-    setTimeout(() => { durusOto(l[0], l.slice(1)); toast(durusAdi(l[0]) + ' başladı · bitince “Duruşu Bitir”e basın'); }, 50);
+    if (!cncMi() || !s || k.durus) return;
+    if (s.sonraki && [].concat(s.sonraki).length) { // eski sürümden kalan sıra
+      const l = [].concat(s.sonraki); s.sonraki = null;
+      return void setTimeout(() => durusOto(l[0], l.slice(1)), 50);
+    }
+    if (!s.hazirlikAktif) return;
+    s.hazirlikAktif = false;
+    const son = k.gecmis.filter(g => g.tur === 'durus' && g.sipId === s.id).slice(-1)[0];
+    const yap = (s.hazirlikYapilan || []).concat(son ? [son.neden] : []);
+    if (!CNC_ONCE.some(x => yap.indexOf(x[1]) < 0)) { kaydet(); return; }
+    setTimeout(() => cncBasAc(yap), 50);
   }
   /** Duruş bitince: ayar için bekleyen bağlama varsa ayarın bittiği anda başlar; yoksa yeni bağlama sorulur. */
   function tornaIslemSor() {
@@ -1313,7 +1322,7 @@ body.tv .mola-bant { font-size: 20px; }
   /** Bağlama seçici: p = 's' (sipariş formu) ya da 'i' (yeni bağlama ekranı) */
   function bagSecici(p) {
     const el = id => $(p + 'Bag' + id), radyo = () => document.querySelectorAll('input[name="' + p + 'BagTaraf"]');
-    let sec = [], tarafElle = false, tip = '';
+    let sec = [], tarafElle = false, tip = '', eslesen = '';
     const tarafYaz = v => radyo().forEach(r => r.checked = r.value === v);
     const durum = () => {
       el('Islem').querySelectorAll('.neden').forEach(b => b.setAttribute('aria-pressed', sec.indexOf(b.dataset.deger) >= 0 ? 'true' : 'false'));
@@ -1332,7 +1341,7 @@ body.tv .mola-bant { font-size: 20px; }
     const api = {
       /** o: { tip, onerilen: [işlem adları], taraf: '2' } */
       ciz(o) {
-        tip = o.tip || ''; tarafElle = false;
+        tip = o.tip || ''; tarafElle = false; eslesen = o.eslesen || '';
         const liste = tip ? islemListesi(tip).map(x => x.ad) : [];
         sec = (o.onerilen || []).filter(ad => liste.indexOf(ad) >= 0);
         el('Islem').innerHTML = liste.map(ad => '<button type="button" class="neden" aria-pressed="false" data-deger="' + esc(ad) + '">' + esc(ad) + '</button>').join('');
@@ -1349,7 +1358,9 @@ body.tv .mola-bant { font-size: 20px; }
         const ac = el('Acik').value.trim();
         if (!el('AcikAlan').hidden && !ac) { el('Acik').classList.add('hatali'); el('Acik').focus(); return { hata: 'Ne yapıldığını kısaca yazın (örn. kama açma).' }; }
         const r = tip === 'Silindir' ? [...radyo()].find(x => x.checked) : null;
-        return { islemler: sirali, ad: sirali.join(' + '), sira: TARAF[r ? r.value : 'tek'] || '', aciklama: ac, ayar: el('Ayar').checked };
+        const sira = TARAF[r ? r.value : 'tek'] || '', ad = sirali.join(' + ');
+        const bek = ikinci(sira) && !eslesen && K().siparis ? bekleyenTaraf(K().siparis)[0] : null;
+        return { islemler: sirali, ad, sira, eslesen: ikinci(sira) ? (eslesen || (bek ? bek.ad : ad)) : '', aciklama: ac, ayar: el('Ayar').checked };
       }
     };
     return api;
@@ -1357,13 +1368,15 @@ body.tv .mola-bant { font-size: 20px; }
   const sBag = bagSecici('s'), iBag = bagSecici('i');
   let iBas = null;
   /** Yeni bağlama ekranı; bas: önceki bağlama geriye alınarak bittiyse yenisi o andan başlar. */
-  function islemSecAc(bas) {
+  function islemSecAc(bas, oneri) {
     const s = K().siparis; if (!s) return goster('ekAna');
     iBas = bas || null;
-    iBag.ciz(Object.assign({ tip: s.siparisTip }, bekleyenOneri(s)));
+    const o = oneri || bekleyenOneri(s);
+    iBag.ciz(Object.assign({ tip: s.siparisTip }, o));
+    $('iBaslik').textContent = o.taraf === '2' ? '2. taraf bağlaması' : 'Yeni bağlama';
     $('iAlt').textContent = 'Sipariş ' + s.no + (s.siparisTip ? ' · ' + tipYazi(s) : '') + ' · ' + etiket();
     const biten = (s.islemler || []).map(islemAdi), bek = bekleyenTaraf(s);
-    $('iNot').textContent = (iBas ? 'Bağlama ' + saatYaz(iBas) + '’den başlamış sayılacak. ' : '') + (biten.length ? 'Bu siparişte biten: ' + biten.join(', ') + '. ' : '') +
+    $('iNot').textContent = (o.taraf === '2' ? '1. tarafta yapılan işlemler seçili geldi; bu tarafta farklıysa ekleyip çıkarın. ' : '') + (iBas && Date.now() - new Date(iBas).getTime() > 60000 ? 'Bağlama ' + saatYaz(iBas) + '’den başlamış sayılacak. ' : '') + (biten.length ? 'Bu siparişte biten: ' + biten.join(', ') + '. ' : '') +
       (bek.length ? '2. tarafı bekleyen: ' + bek.map(x => x.ad + ' (1. taraf ' + x.b1 + ' adet, 2. taraf ' + x.b2 + ' adet)').join(', ') : '');
     hata('iHata', ''); goster('ekIslem');
   }
@@ -1371,8 +1384,8 @@ body.tv .mola-bant { font-size: 20px; }
   /** Bağlamayı başlatır (IB) ve yerelde süren bağlama yapar. b: {ad, islemler, sira, aciklama} */
   function islemBaslat(k, s, b, bas) {
     const id = yeniNo('I'), t = new Date(bas).toISOString(), l = b.islemler || [b.ad];
-    olay(k, 'IB', { id, islem: b.ad, islemler: l, sira: b.sira || '', aciklama: b.aciklama || '', sipId: s.id, sipNo: s.no, siparisTip: s.siparisTip || '', altTip: s.altTip || '', malzeme: s.malzeme || '', gobek: s.gobek, dis: s.dis, boy: s.boy, t });
-    return s.islem = { id, ad: b.ad, islemler: l, sira: b.sira || '', aciklama: b.aciklama || '', bas: t };
+    olay(k, 'IB', { id, islem: b.ad, islemler: l, sira: b.sira || '', eslesen: b.eslesen || '', aciklama: b.aciklama || '', sipId: s.id, sipNo: s.no, siparisTip: s.siparisTip || '', altTip: s.altTip || '', malzeme: s.malzeme || '', gobek: s.gobek, dis: s.dis, boy: s.boy, t });
+    return s.islem = { id, ad: b.ad, islemler: l, sira: b.sira || '', eslesen: b.eslesen || '', aciklama: b.aciklama || '', bas: t };
   }
   let ibKapat = false;
   function islemBitirAc(kapat) {
@@ -1382,7 +1395,7 @@ body.tv .mola-bant { font-size: 20px; }
     $('ibBaslik').textContent = 'Bağlama bitti';
     $('ibAlt').textContent = islemAdi(i) + ' · başladı ' + saatYaz(i.bas) + ' · ' + dk(islemMs(k, i)) + ' dk (duruşlar ve molalar hariç)' +
       (dun ? ' · Bağlama önceki gün başlamış: bitişi o günün mesai sonu sayılır.' : '');
-    const ilkTaraf = birinci(i.sira), d = ikinci(i.sira) ? tarafDurumu(s)[i.ad] : null;
+    const ilkTaraf = birinci(i.sira), d = ikinci(i.sira) ? tarafDurumu(s)[i.eslesen || i.ad] : null;
     $('ibAdet').value = d && d.b1 > d.b2 ? d.b1 - d.b2 : (s.sipAdet == null ? '' : s.sipAdet); $('ibAdet').classList.remove('hatali');
     $('ibOnce').value = ''; $('ibOnceAlan').hidden = true; $('ibOnceAc').hidden = dun;
     $('bIbKapat').textContent = ilkTaraf ? 'Siparişi şimdi kapat (2. taraf sonra yapılacak)' : kapat ? 'Bağlamayı bitir ve siparişi kapat' : 'Sipariş bitti, siparişi kapat';
@@ -1397,7 +1410,7 @@ body.tv .mola-bant { font-size: 20px; }
   /** İşlemi yerelde kapatır ve sunucuya gönderir. */
   function islemKapatYerel(k, i, bit, adet, isaret) {
     olay(k, 'IT', { id: i.id, adet, t: bit.toISOString(), isaret: isaret || '' });
-    (k.siparis.islemler = k.siparis.islemler || []).push({ ad: i.ad, islemler: i.islemler || [i.ad], sira: i.sira || '', aciklama: i.aciklama || '', bas: i.bas, bit: bit.toISOString(), adet, dk: dk(islemMs(k, i, bit)) });
+    (k.siparis.islemler = k.siparis.islemler || []).push({ ad: i.ad, islemler: i.islemler || [i.ad], sira: i.sira || '', eslesen: i.eslesen || '', aciklama: i.aciklama || '', bas: i.bas, bit: bit.toISOString(), adet, dk: dk(islemMs(k, i, bit)) });
     k.siparis.islem = null;
   }
   function islemBitirKaydet(kapat) {
@@ -1425,10 +1438,10 @@ body.tv .mola-bant { font-size: 20px; }
       kalanGoster();
       return;
     }
-    // 1. taraf bitince aynı işlemlerle 2. taraf kendiliğinden başlar
+    // 1. taraf bitince 2. taraf bağlaması: aynı işlemler seçili gelir, öbür tarafta farklıysa değiştirilir
     if (birinci(i.sira)) {
-      const y = islemBaslat(k, s, { ad: i.ad, islemler: i.islemler, sira: '2. taraf', aciklama: i.aciklama }, bit);
-      return bitti('1. taraf bitti (' + adet + ' adet) · 2. taraf başladı: ' + islemAdi(y));
+      toast('1. taraf bitti · ' + adet + ' adet');
+      return islemSecAc(bit, { onerilen: i.islemler || i.ad.split(' + '), taraf: '2', eslesen: i.ad });
     }
     toast(islemAdi(i) + ' bitti · ' + adet + ' adet');
     islemSecAc(geri);
@@ -1538,7 +1551,7 @@ body.tv .mola-bant { font-size: 20px; }
     $('kpTaraf').hidden = !bek.length;
     if (bek.length) { // 2. işlemi yapılmayan parça bitmiş sayılmaz
       const d = tarafDurumu(s), b = bek[bek.length - 1];
-      $('kpAdet').value = (s.islemler || []).filter(x => x.ad === b.ad && ikinci(x.sira)).reduce((t, x) => t + (Number(x.adet) || 0), 0);
+      $('kpAdet').value = (s.islemler || []).filter(x => (x.eslesen || x.ad) === b.ad && ikinci(x.sira)).reduce((t, x) => t + (Number(x.adet) || 0), 0);
       $('kpYarim').checked = true;
       $('kpTaraf').innerHTML = bek.map(x => '<b>' + esc(x.ad) + '</b>: 1. taraf ' + x.b1 + ' adet, 2. taraf ' + x.b2 + ' adet').join('<br>') +
         '<br>2. tarafı işlenmeyen parça bitmiş sayılmaz. Biten adede sadece iki tarafı da işlenenleri yazın; sipariş yarım kalır, devam ederken 2. taraf hazır gelir.';
@@ -1831,7 +1844,6 @@ body.tv .mola-bant { font-size: 20px; }
       return bitti(islemAdi(s.islem) + ' başladı');
     }
     if (ekran === 'ekIslemBitir') return void islemBitirKaydet(false);
-    if (ekran === 'ekCncBas') return void cncBasla();
     if (ekran === 'ekBaslat') {
       bAlan.forEach(id => $(id).classList.remove('hatali'));
       const isaret = (id, m) => { $(id).classList.add('hatali'); $(id).focus(); hata('bHata', m); };
