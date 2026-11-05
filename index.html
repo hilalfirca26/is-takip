@@ -293,6 +293,7 @@ body.tv .mola-bant { font-size: 20px; }
   </section>
 
   <section id="ekAna" hidden>
+    <p class="uyari-not" id="kDeneme" hidden><b>DENEME MODU</b> · Bu kişiyle girilenler gerçek kayıtlara, panele ve analizlere yazılmaz; sadece “Deneme Kayıtları” sekmesine düşer. Tabletteki diğer operatörleri etkilemez.</p>
     <p class="mola-bant" id="kMola" hidden></p>
     <div class="kart izleme" id="kIzleme" hidden>
       <div class="ust"><span class="etk">İzleme modu</span></div>
@@ -867,9 +868,12 @@ body.tv .mola-bant { font-size: 20px; }
 
   /* ---------- Tablet kilidi ---------- */
   /** Makineli bölümde bu cihaz o makineye bağlı değilse yalnızca izlenir (kayıt girilemez). */
+  /** DENEME kişisi: kayıtları sunucuda gerçek sekmelere yazılmaz; tablette diğer kişilerle karışmaz. */
+  const denemeMi = kim => !!kim && /^deneme$/i.test(String(kim.personel || '').trim());
+  const ayriDunya = (a, b) => denemeMi(a) !== denemeMi(b); // deneme ile gerçek kişiler birbirinin kayıtlarını görmez
   function izleme() {
     const y = AYAR.yetki;
-    if (!kimlik || !kimlik.makine || !y || !y.aktif) return false;
+    if (!kimlik || !kimlik.makine || !y || !y.aktif || denemeMi(kimlik)) return false;
     // Henüz tableti olmayan makinede ilk kayıt bu cihazı otomatik bağlar
     return (y.kilitli || []).indexOf(kimlik.makine) >= 0 && (y.bu || []).indexOf(kimlik.makine) < 0;
   }
@@ -920,7 +924,7 @@ body.tv .mola-bant { font-size: 20px; }
 
   /** Bugün vardiya başından şu ana kadar hiçbir kayda düşmeyen ilk aralık (aradaki boşluklar dahil). */
   function bosluk() {
-    if (izleme()) return null;
+    if (izleme() || denemeMi(kimlik)) return null; // deneme kişisine "bu arada ne yaptın" sorulmaz
     const k = K(), now = new Date(), vb = saatte(now, vd().basla), ve = saatte(now, vd().bitis);
     const ust = (now < ve ? now : ve).getTime();
     if (!(ust > vb.getTime())) return null;
@@ -934,7 +938,7 @@ body.tv .mola-bant { font-size: 20px; }
     // Aynı makinede bu tablette çalışan diğer operatörlerin kayıtları: makine boş değildi, yeni gelene sorulmaz
     // ("başka makinede çalıştım" boşluk açıklaması hariç: o saatlerde makinede kimse yoktu)
     if (k.kim.makine) Object.keys(S.kisiler).forEach(a => {
-      const o = S.kisiler[a]; if (o === k || !o.kim || o.kim.bolum !== k.kim.bolum || o.kim.makine !== k.kim.makine) return;
+      const o = S.kisiler[a]; if (o === k || !o.kim || o.kim.bolum !== k.kim.bolum || o.kim.makine !== k.kim.makine || ayriDunya(o.kim, k.kim)) return;
       o.gecmis.forEach(g => { if (!(g.tur === 'durus' && g.neden === 'BAŞKA MAKİNEDE ÇALIŞTIM')) ekle(g.bas, g.bit); });
       if (o.siparis) ekle(o.siparis.bas, now);
       if (o.durus && o.durus.neden !== 'BAŞKA MAKİNEDE ÇALIŞTIM') ekle(o.durus.bas, now);
@@ -959,6 +963,7 @@ body.tv .mola-bant { font-size: 20px; }
 
   function ciz() {
     if (!kimlik) return;
+    $('kDeneme').hidden = !denemeMi(kimlik);
     const izl = izleme();
     $('kIzleme').hidden = !izl;
     ['bSipBaslat', 'bDurusBaslat', 'bDurusEkle', 'liste'].forEach(id => $(id).classList.toggle('gizle', izl));
@@ -1159,7 +1164,7 @@ body.tv .mola-bant { font-size: 20px; }
   /** Siparişin (önceki parçaları dahil) bağlamalarında 1. ve 2. taraf adetleri: { 'Alın tornalama + Boylama': { b1: 200, b2: 0 } } */
   function tarafDurumu(s) {
     const o = {}, ekle = x => { if (!x.sira) return; const r = o[x.ad] = o[x.ad] || { b1: 0, b2: 0 }; r[ikinci(x.sira) ? 'b2' : 'b1'] += Number(x.adet) || 0; };
-    Object.keys(S.kisiler).forEach(a => { const kk = S.kisiler[a]; if (!kk.kim || kk.kim.bolum !== kimlik.bolum) return;
+    Object.keys(S.kisiler).forEach(a => { const kk = S.kisiler[a]; if (!kk.kim || kk.kim.bolum !== kimlik.bolum || ayriDunya(kk.kim, kimlik)) return;
       kk.gecmis.forEach(g => { if (g.tur === 'siparis' && String(g.no) === String(s.no) && gecen(g.bit) < 30 * 86400000) (g.islemler || []).forEach(ekle); }); });
     (s.islemler || []).forEach(ekle);
     return o;
@@ -1446,7 +1451,7 @@ body.tv .mola-bant { font-size: 20px; }
   function yarimKalanlar() {
     const k = K(), son = {}, acik = new Set();
     Object.keys(S.kisiler).forEach(a => {
-      const o = S.kisiler[a]; if (!o.kim || o.kim.bolum !== k.kim.bolum || (o.kim.makine || '') !== (k.kim.makine || '')) return;
+      const o = S.kisiler[a]; if (!o.kim || o.kim.bolum !== k.kim.bolum || (o.kim.makine || '') !== (k.kim.makine || '') || ayriDunya(o.kim, k.kim)) return;
       if (!k.kim.makine && o !== k) return;
       if (o.siparis) acik.add(String(o.siparis.no));
       o.gecmis.forEach(g => { if (g.tur !== 'siparis') return; const n = String(g.no); if (!son[n] || g.bit > son[n].g.bit) son[n] = { g, kim: o.kim.personel }; });
@@ -1457,7 +1462,7 @@ body.tv .mola-bant { font-size: 20px; }
   /** Aynı siparişin bu makinedeki en son kapanmış parçası (delik bilgileri için). */
   function oncekiParca(no) {
     const k = K(); let p = null;
-    Object.keys(S.kisiler).forEach(a => { const o = S.kisiler[a]; if (!o.kim || o.kim.bolum !== k.kim.bolum || (o.kim.makine || '') !== (k.kim.makine || '')) return;
+    Object.keys(S.kisiler).forEach(a => { const o = S.kisiler[a]; if (!o.kim || o.kim.bolum !== k.kim.bolum || (o.kim.makine || '') !== (k.kim.makine || '') || ayriDunya(o.kim, k.kim)) return;
       o.gecmis.forEach(g => { if (g.tur === 'siparis' && String(g.no) === String(no) && g.delik !== '' && g.delik != null && (!p || g.bit > p.bit)) p = g; }); });
     return p;
   }
@@ -1487,7 +1492,7 @@ body.tv .mola-bant { font-size: 20px; }
     // Bu tablette aynı makinede (kim girdiyse) yarım bırakılmış aynı sipariş: en son bırakılanın kalanı
     let onceki = null, kimdi = '';
     if (no) Object.keys(S.kisiler).forEach(a => {
-      const kk = S.kisiler[a]; if (!kk.kim || kk.kim.bolum !== kimlik.bolum || (kk.kim.makine || '') !== (kimlik.makine || '')) return;
+      const kk = S.kisiler[a]; if (!kk.kim || kk.kim.bolum !== kimlik.bolum || (kk.kim.makine || '') !== (kimlik.makine || '') || ayriDunya(kk.kim, kimlik)) return;
       kk.gecmis.forEach(g => { if (g.tur === 'siparis' && String(g.no) === no && g.sonuc === 'Yarım bırakıldı' && Number(g.kalan) > 0 && (!onceki || g.bit > onceki.bit)) { onceki = g; kimdi = kk.kim.personel; } });
     });
     if (onceki && (!$('sAdet').value || sAdetOto)) {
@@ -2198,7 +2203,7 @@ body.tv .mola-bant { font-size: 20px; }
 
   /* ---------- Tablet sinyali (panelde "çevrimiçi" görünmesi için) ---------- */
   async function nabiz() {
-    if (DEMO || !kimlik || !navigator.onLine) return;
+    if (DEMO || !kimlik || !navigator.onLine || denemeMi(kimlik)) return;
     try {
       await fetch(API + '?api=nabiz&cihaz=' + encodeURIComponent(S.cihaz) + '&bolum=' + encodeURIComponent(kimlik.bolum) + '&personel=' + encodeURIComponent(kimlik.personel) +
         '&makine=' + encodeURIComponent(kimlik.makine || '') + '&kuyruk=' + S.kuyruk.length, { cache: 'no-store' });
