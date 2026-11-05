@@ -250,6 +250,9 @@ body.tv .mola-bant { font-size: 20px; }
 .secim.uclu { grid-template-columns: repeat(3, 1fr); }
 #sAltAlan, #sMalzAlan, #sOlcu { margin-top: 8px; }
 #ekCncBas .btn-dev { min-height: 64px; font-size: 19px; }
+.nedenler.taraf { grid-template-columns: 1fr 1fr; }
+.nedenler.taraf .neden { min-height: 60px; font-size: 18px; font-weight: 600; }
+.uyari-not { color: var(--ink); background: var(--stop-soft); border-left: 4px solid var(--stop); border-radius: var(--r); padding: 10px 14px; margin: 0; font-size: 15px; line-height: 1.45; }
 </style>
 </head>
 <body>
@@ -421,6 +424,14 @@ body.tv .mola-bant { font-size: 20px; }
     <div><h1>İşlem seç</h1><p class="sub" id="iAlt"></p></div>
     <span class="etiket" id="iIslemEt">Hangi işlemi yapacaksınız?<i>*</i></span>
     <div class="nedenler" id="iIslemler" role="group" aria-labelledby="iIslemEt"></div>
+    <div class="alan" id="iTarafAlan" hidden>
+      <span class="etiket" id="iTarafEt">Hangi taraf?<i>*</i></span>
+      <div class="nedenler taraf" id="iTaraf" role="group" aria-labelledby="iTarafEt">
+        <button type="button" class="neden" data-deger="1. işlem" aria-pressed="false">1. işlem (ilk taraf)</button>
+        <button type="button" class="neden" data-deger="2. işlem" aria-pressed="false">2. işlem (ikinci taraf)</button>
+      </div>
+      <p class="sub" id="iTarafNot" style="margin:0"></p>
+    </div>
     <div class="alan" id="iAcikAlan" hidden><label for="iAcik">Ne yapılıyor?<i>*</i></label><input id="iAcik" autocomplete="off" placeholder="Örn. kama açma"></div>
     <p class="sub" id="iNot"></p>
     <p class="hata" id="iHata" hidden></p>
@@ -452,6 +463,7 @@ body.tv .mola-bant { font-size: 20px; }
       <div class="alan"><label for="sYatay">Yatay mesafe (mm)</label><input id="sYatay" inputmode="decimal" autocomplete="off"></div>
       <div class="alan"><label for="sDikey">Dikey mesafe (mm)</label><input id="sDikey" inputmode="decimal" autocomplete="off"></div>
     </div>
+    <p class="uyari-not" id="kpTaraf" hidden></p>
     <div class="alan">
       <span class="etiket" id="kpSonucEt">Sipariş bitti mi?<i>*</i></span>
       <div class="secim" role="radiogroup" aria-labelledby="kpSonucEt">
@@ -609,8 +621,9 @@ body.tv .mola-bant { font-size: 20px; }
     uyari: { 'TEMİZLİK': 30, 'AYAR': 120, 'ARIZA': 120, 'MALZEME BEKLEME': 60, 'BOŞTA / SİPARİŞ YOK': 240, 'KİŞİSEL İHTİYAÇ': 30, 'GEÇ AÇILIŞ': 30,
       'PROGRAM / ÇİZİM': 150, 'TEL / SARF DEĞİŞİMİ': 60, 'ELEKTRİK / KOMPRESÖR': 60, 'BAKIM': 180, 'TOPLANTI': 60, 'BAŞKA MAKİNE AYAR': 120, 'BAŞKA MAKİNEDE ÇALIŞTIM': 240, 'BAŞKA MAKİNE ARIZA': 120, 'KALIP DEĞİŞTİRME': 120, 'SENSÖR DEĞİŞTİRME': 60, 'PAH KIRMA': 60, 'DİĞER': 60 },
     esik: 10,
-    islemler: ['Çap işleme', 'Göbek işleme', 'Boylama', 'Mil işleme', 'Torna bağlama aparatı', 'Çakım bağlama aparatı', 'Dairesel tornalama',
-      'Flanş yatağı açma', 'Taban düzeltme (balans)'].map(ad => ({ ad, tip: 'İkisi de', aciklama: false })).concat([{ ad: 'Kama / kanal / diğer', tip: 'İkisi de', aciklama: true }]),
+    islemler: ['Çap işleme', 'Göbek işleme', 'Boylama', 'Alın tornalama', 'Mil işleme', 'Kalem açma', 'Deterjan kanalı', 'Torna bağlama aparatı', 'Çakım bağlama aparatı',
+      'Dairesel tornalama', 'Flanş yatağı açma', 'Taban düzeltme (balans)'].map(ad => ({ ad, tip: 'İkisi de', aciklama: false, ikiTaraf: ['Göbek işleme', 'Boylama', 'Alın tornalama', 'Mil işleme'].indexOf(ad) >= 0 }))
+      .concat([{ ad: 'Kama / kanal / diğer', tip: 'İkisi de', aciklama: true, ikiTaraf: false }]),
     vardiya: { basla: '08:00', bitis: '18:00', molalar: [['10:15', '10:30'], ['12:00', '12:35'], ['15:45', '16:00']],
       temizlik: { diger: [['17:45', '18:00']], cuma: [['17:30', '18:00']] } }
   };
@@ -940,12 +953,12 @@ body.tv .mola-bant { font-size: 20px; }
     $('kDevamListe').innerHTML = yk.map(x => { const g = x.g, gun = gunAnahtar(g.bit) === gunAnahtar(Date.now()) ? 'bugün' : gunAnahtar(g.bit) === gunAnahtar(Date.now() - 86400000) ? 'dün' : new Date(g.bit).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' });
       const ad = g.sipAdet !== '' && g.sipAdet != null ? (Number(g.sipAdet) - Number(g.kalan)) : null;
       return '<div class="devam-oge"><div><b>Sipariş ' + esc(g.no) + '</b><span>' + (g.kalan !== '' && g.kalan != null ? (ad != null ? esc(g.sipAdet) + ' adetin ' + ad + ' adedi yapıldı · ' : '') + 'kalan ' + esc(g.kalan) + ' adet · ' : '') +
-        gun + ' ' + saatYaz(g.bit) + (x.kim && x.kim !== kimlik.personel ? ' · ' + esc(x.kim) : '') + '</span></div><button class="btn btn-ikincil" type="button" data-no="' + esc(g.no) + '">Devam et</button></div>'; }).join('');
+        gun + ' ' + saatYaz(g.bit) + (x.kim && x.kim !== kimlik.personel ? ' · ' + esc(x.kim) : '') + sonIslem(g) + '</span></div><button class="btn btn-ikincil" type="button" data-no="' + esc(g.no) + '">Devam et</button></div>'; }).join('');
     $('kSiparis').hidden = !s; $('bSipBaslat').hidden = !!s;
     const tor = tornaMi(), isl = tor && s ? s.islem : null;
     $('kIslem').hidden = !isl; $('bIslemBaslat').hidden = !(tor && s && !s.islem);
     $('bSipKapat').className = 'btn ' + (isl ? 'btn-ikincil' : 'btn-ana btn-dev'); // işlem sürerken asıl düğme "İşlem bitti"
-    if (isl) { $('kIslemAd').textContent = isl.ad + (isl.aciklama ? ' · ' + isl.aciklama : ''); $('kIslemBas').textContent = 'Başladı ' + saatYaz(isl.bas); }
+    if (isl) { $('kIslemAd').textContent = islemAdi(isl) + (isl.aciklama ? ' · ' + isl.aciklama : ''); $('kIslemBas').textContent = 'Başladı ' + saatYaz(isl.bas); }
     $('kDurus').hidden = !d; $('bDurusBaslat').hidden = !!d;
     $('kBosluk').hidden = !b;
     if (s) {
@@ -1045,7 +1058,7 @@ body.tv .mola-bant { font-size: 20px; }
     if (isl && !$('kIslem').hidden) {
       $('kIslemSayac').textContent = sure(islemMs(k, isl));
       $('kIslemSayac').classList.toggle('durdu', !!(mola || k.durus));
-      const biten = (k.siparis.islemler || []).map(x => x.ad);
+      const biten = (k.siparis.islemler || []).map(islemAdi);
       $('kIslemBilgi').textContent = k.durus ? 'Duruş sürüyor: işlem süresi durdu, duruş bitince devam eder.' : biten.length ? 'Bu siparişte biten işlemler: ' + biten.join(', ') : '';
     }
     if (k.siparis) {
@@ -1113,6 +1126,20 @@ body.tv .mola-bant { font-size: 20px; }
   function tipYazi(x) { return [x.siparisTip, x.altTip, x.malzeme].filter(Boolean).join(' ') + ' ' + olcuYaz(x); }
   /** Siparişin tipine göre gösterilecek işlemler (Ayarlar - Torna İşlemleri). */
   function islemListesi(tip) { return (AYAR.islemler || VARSAYILAN.islemler).filter(x => !tip || !x.tip || x.tip === 'İkisi de' || x.tip === tip); }
+  /** "Boylama · 1. işlem" */
+  function islemAdi(i) { return i.ad + (i.sira ? ' · ' + i.sira : ''); }
+  /** Silindirde iki taraflı işlem mi (önce bir taraf, sonra öbür taraf işlenir). */
+  function ikiTarafMi(ad, s) { const t = islemListesi().find(x => x.ad === ad); return !!(t && t.ikiTaraf && s && s.siparisTip === 'Silindir'); }
+  /** Siparişin (önceki parçaları dahil) iki taraflı işlemlerinde 1. ve 2. işlem adetleri: { Boylama: { b1: 200, b2: 0 } } */
+  function tarafDurumu(s) {
+    const o = {}, ekle = x => { if (!x.sira) return; const r = o[x.ad] = o[x.ad] || { b1: 0, b2: 0 }; r[x.sira === '2. işlem' ? 'b2' : 'b1'] += Number(x.adet) || 0; };
+    Object.keys(S.kisiler).forEach(a => { const kk = S.kisiler[a]; if (!kk.kim || kk.kim.bolum !== kimlik.bolum) return;
+      kk.gecmis.forEach(g => { if (g.tur === 'siparis' && String(g.no) === String(s.no) && gecen(g.bit) < 30 * 86400000) (g.islemler || []).forEach(ekle); }); });
+    (s.islemler || []).forEach(ekle);
+    return o;
+  }
+  /** 1. işlemi yapılıp 2. işlemi eksik kalan işlemler */
+  function bekleyenTaraf(s) { const o = tarafDurumu(s); return Object.keys(o).filter(ad => o[ad].b1 > o[ad].b2).map(ad => ({ ad, b1: o[ad].b1, b2: o[ad].b2 })); }
   /** İşlemin süresi: molalar ve içindeki duruşlar düşülür (ekranda duruşta sayaç durur). */
   function islemMs(k, i, bit) {
     bit = bit ? new Date(bit).getTime() : Date.now();
@@ -1232,30 +1259,40 @@ body.tv .mola-bant { font-size: 20px; }
   }
   /** Duruş bitince: tornada açık sipariş var ama işlem yoksa işlem sorulur (örn. ayar bitti). */
   function tornaIslemSor() { cncSonraki(); const k = K(); if (tornaMi() && !izleme() && k.siparis && !k.siparis.islem && !k.durus) islemSecAc(); }
-  let iSecili = '', iBas = null;
+  let iSecili = '', iBas = null, iTaraf = '';
   /** İşlem seçimi; bas: önceki işlem geriye alınarak bittiyse yenisi o andan başlar. */
   function islemSecAc(bas) {
     const s = K().siparis; if (!s) return goster('ekAna');
-    iSecili = ''; iBas = bas || null;
+    iSecili = ''; iTaraf = ''; iBas = bas || null; $('iTarafAlan').hidden = true;
     $('iIslemler').innerHTML = islemListesi(s.siparisTip).map(x => '<button type="button" class="neden" aria-pressed="false">' + esc(x.ad) + '</button>').join('');
     $('iAcik').value = ''; $('iAcik').classList.remove('hatali'); $('iAcikAlan').hidden = true;
     $('iAlt').textContent = 'Sipariş ' + s.no + (s.siparisTip ? ' · ' + tipYazi(s) : '') + ' · ' + etiket();
-    const biten = (s.islemler || []).map(x => x.ad);
-    $('iNot').textContent = (iBas ? 'İşlem ' + saatYaz(iBas) + '’den başlamış sayılacak. ' : '') + (biten.length ? 'Bu siparişte biten: ' + biten.join(', ') : '');
+    const biten = (s.islemler || []).map(islemAdi), bek = bekleyenTaraf(s);
+    $('iNot').textContent = (iBas ? 'İşlem ' + saatYaz(iBas) + '’den başlamış sayılacak. ' : '') + (biten.length ? 'Bu siparişte biten: ' + biten.join(', ') + '. ' : '') +
+      (bek.length ? '2. işlemi bekleyen: ' + bek.map(x => x.ad + ' (1. işlem ' + x.b1 + ' adet, 2. işlem ' + x.b2 + ' adet)').join(', ') : '');
     hata('iHata', ''); goster('ekIslem');
   }
   nedenSecici('iIslemler', n => {
-    iSecili = n; const t = islemListesi().find(x => x.ad === n) || {};
+    iSecili = n; const t = islemListesi().find(x => x.ad === n) || {}, s = K().siparis;
     $('iAcikAlan').hidden = !t.aciklama; hata('iHata', '');
+    const iki = ikiTarafMi(n, s);
+    $('iTarafAlan').hidden = !iki; iTaraf = '';
+    if (iki) {
+      const d = tarafDurumu(s)[n] || { b1: 0, b2: 0 };
+      tarafSec(d.b1 > d.b2 ? '2. işlem' : '1. işlem');
+      $('iTarafNot').textContent = d.b1 || d.b2 ? 'Bu siparişte ' + n + ': 1. işlem ' + d.b1 + ' adet, 2. işlem ' + d.b2 + ' adet yapıldı.' : 'Önce bir taraf (1. işlem), sonra öbür taraf (2. işlem) işlenir.';
+    }
     if (t.aciklama) $('iAcik').focus();
   });
+  function tarafSec(v) { iTaraf = v; $('iTaraf').querySelectorAll('.neden').forEach(x => x.setAttribute('aria-pressed', x.dataset.deger === v ? 'true' : 'false')); }
+  nedenSecici('iTaraf', v => { iTaraf = v; hata('iHata', ''); });
   $('bIslemBaslat').addEventListener('click', () => islemSecAc());
   let ibKapat = false;
   function islemBitirAc(kapat) {
     const k = K(), s = k.siparis, i = s && s.islem; if (!i) return;
     ibKapat = !!kapat;
     const dun = gunAnahtar(i.bas) !== gunAnahtar(Date.now());
-    $('ibBaslik').textContent = i.ad + ' bitti';
+    $('ibBaslik').textContent = islemAdi(i) + ' bitti';
     $('ibAlt').textContent = 'Başladı ' + saatYaz(i.bas) + ' · ' + dk(islemMs(k, i)) + ' dk (duruşlar ve molalar hariç)' +
       (dun ? ' · İşlem önceki gün başlamış: bitişi o günün mesai sonu sayılır.' : '');
     $('ibAdet').value = s.sipAdet == null ? '' : s.sipAdet; $('ibAdet').classList.remove('hatali');
@@ -1271,7 +1308,7 @@ body.tv .mola-bant { font-size: 20px; }
   /** İşlemi yerelde kapatır ve sunucuya gönderir. */
   function islemKapatYerel(k, i, bit, adet, isaret) {
     olay(k, 'IT', { id: i.id, adet, t: bit.toISOString(), isaret: isaret || '' });
-    (k.siparis.islemler = k.siparis.islemler || []).push({ ad: i.ad, aciklama: i.aciklama || '', bas: i.bas, bit: bit.toISOString(), adet, dk: dk(islemMs(k, i, bit)) });
+    (k.siparis.islemler = k.siparis.islemler || []).push({ ad: i.ad, sira: i.sira || '', aciklama: i.aciklama || '', bas: i.bas, bit: bit.toISOString(), adet, dk: dk(islemMs(k, i, bit)) });
     k.siparis.islem = null;
   }
   function islemBitirKaydet(kapat) {
@@ -1295,10 +1332,11 @@ body.tv .mola-bant { font-size: 20px; }
     if (kapat) {
       goster('ekAna'); ciz(); $('bSipKapat').click();
       if (geri) { $('kpBitisAlan').hidden = false; $('kpBitisAc').hidden = true; $('kpBitis').value = saatYaz(geri); kapatOzet(); }
-      $('kpAdet').value = adet; kalanGoster();
+      if ($('kpTaraf').hidden) $('kpAdet').value = adet; // 2. işlemi eksikse biten adet zaten hesaplandı
+      kalanGoster();
       return;
     }
-    toast(i.ad + ' bitti · ' + adet + ' adet');
+    toast(islemAdi(i) + ' bitti · ' + adet + ' adet');
     islemSecAc(geri);
   }
 
@@ -1308,6 +1346,13 @@ body.tv .mola-bant { font-size: 20px; }
   let devamNo = null;
   $('bSipBaslat').addEventListener('click', () => { devamNo = null; if (bosluk()) return boslukAc('siparis'); siparisFormu(); });
   $('kDevamListe').addEventListener('click', e => { const b = e.target.closest('button[data-no]'); if (!b) return; devamNo = b.dataset.no; if (bosluk()) return boslukAc('siparis'); siparisFormu(); });
+  /** Yarım kalan kartında: son yapılan işlem ve bekleyen 2. işlem */
+  function sonIslem(g) {
+    const l = g.islemler || [], son = l[l.length - 1]; if (!son) return '';
+    const bek = tornaMi() ? bekleyenTaraf({ no: g.no, islemler: [] }) : [];
+    return '<br>Son işlem: ' + esc(islemAdi(son)) + (son.adet !== '' && son.adet != null ? ' (' + esc(son.adet) + ' adet)' : '') +
+      (bek.length ? ' · <b>2. işlem bekliyor: ' + bek.map(x => esc(x.ad)).join(', ') + '</b>' : '');
+  }
   /** Bu makinede (makinesiz bölümde: bu kişide) en son parçası "yarım bırakıldı" olan, şu an açık olmayan siparişler (son 14 gün). */
   function yarimKalanlar() {
     const k = K(), son = {}, acik = new Set();
@@ -1394,8 +1439,16 @@ body.tv .mola-bant { font-size: 20px; }
     $('kpBaslik').textContent = 'Sipariş ' + s.no;
     $('kpAlt').textContent = saatYaz(s.bas) + ' başladı · şimdi kapatılıyor' + (s.sipAdet ? ' · yapılacak ' + s.sipAdet + ' adet' : '') +
       (delikOnceki ? ' · delik bilgileri önceki kapanıştan dolduruldu, değiştiyse düzeltin' : '');
-    const sonIs = (s.islemler || []).slice(-1)[0];
+    const sonIs = (s.islemler || []).slice(-1)[0], bek = tornaMi() ? bekleyenTaraf(s) : [];
     if (sonIs && sonIs.adet !== '' && sonIs.adet != null) $('kpAdet').value = sonIs.adet;
+    $('kpTaraf').hidden = !bek.length;
+    if (bek.length) { // 2. işlemi yapılmayan parça bitmiş sayılmaz
+      const d = tarafDurumu(s), b = bek[bek.length - 1];
+      $('kpAdet').value = (s.islemler || []).filter(x => x.ad === b.ad && x.sira === '2. işlem').reduce((t, x) => t + (Number(x.adet) || 0), 0);
+      $('kpYarim').checked = true;
+      $('kpTaraf').innerHTML = bek.map(x => '<b>' + esc(x.ad) + '</b>: 1. işlem ' + x.b1 + ' adet, 2. işlem ' + x.b2 + ' adet').join('<br>') +
+        '<br>2. işlemi yapılmayan parça bitmiş sayılmaz. Biten adede sadece iki tarafı da işlenenleri yazın; sipariş yarım kalır, devam ederken 2. işlem seçilir.';
+    }
     kalanGoster();
     hata('kpHata', ''); kapatOzet(); goster('ekKapat'); $('kpAdet').focus();
   });
@@ -1670,12 +1723,14 @@ body.tv .mola-bant { font-size: 20px; }
       if (!iSecili) return hata('iHata', 'Yapacağınız işlemi seçin.');
       const tanim = islemListesi().find(x => x.ad === iSecili) || {}, ac = $('iAcik').value.trim();
       if (tanim.aciklama && !ac) { $('iAcik').classList.add('hatali'); $('iAcik').focus(); return hata('iHata', 'Ne yapıldığını kısaca yazın (örn. kama açma).'); }
-      if (s.islem) return hata('iHata', 'Süren bir işlem var (' + s.islem.ad + '). Önce onu bitirin.');
+      const sira = ikiTarafMi(iSecili, s) ? iTaraf : '';
+      if (ikiTarafMi(iSecili, s) && !sira) return hata('iHata', '1. işlem mi 2. işlem mi, seçin.');
+      if (s.islem) return hata('iHata', 'Süren bir işlem var (' + islemAdi(s.islem) + '). Önce onu bitirin.');
       const id = yeniNo('I'), t = (iBas && iBas > new Date(s.bas) ? iBas : simdi).toISOString();
-      olay(k, 'IB', { id, islem: iSecili, aciklama: ac, sipId: s.id, sipNo: s.no, siparisTip: s.siparisTip || '', altTip: s.altTip || '', malzeme: s.malzeme || '', gobek: s.gobek, dis: s.dis, boy: s.boy, t });
-      s.islem = { id, ad: iSecili, aciklama: ac, bas: t };
+      olay(k, 'IB', { id, islem: iSecili, sira, aciklama: ac, sipId: s.id, sipNo: s.no, siparisTip: s.siparisTip || '', altTip: s.altTip || '', malzeme: s.malzeme || '', gobek: s.gobek, dis: s.dis, boy: s.boy, t });
+      s.islem = { id, ad: iSecili, sira, aciklama: ac, bas: t };
       iBas = null;
-      return bitti(iSecili + ' başladı');
+      return bitti(islemAdi(s.islem) + ' başladı');
     }
     if (ekran === 'ekIslemBitir') return void islemBitirKaydet(false);
     if (ekran === 'ekBaslat') {
