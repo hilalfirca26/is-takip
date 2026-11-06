@@ -980,7 +980,8 @@ body.tv .mola-bant { font-size: 20px; }
     $('kDevam').hidden = !yk.length;
     $('kDevamListe').innerHTML = yk.map(x => { const g = x.g, gun = gunAnahtar(g.bit) === gunAnahtar(Date.now()) ? 'bugün' : gunAnahtar(g.bit) === gunAnahtar(Date.now() - 86400000) ? 'dün' : new Date(g.bit).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' });
       const ad = g.sipAdet !== '' && g.sipAdet != null ? (Number(g.sipAdet) - Number(g.kalan)) : null;
-      return '<div class="devam-oge"><div><b>Sipariş ' + esc(g.no) + '</b><span>' + (g.kalan !== '' && g.kalan != null ? (ad != null ? esc(g.sipAdet) + ' adetin ' + ad + ' adedi yapıldı · ' : '') + 'kalan ' + esc(g.kalan) + ' adet · ' : '') +
+      const tamami = g.kalan !== '' && g.kalan != null && Number(g.kalan) === 0; // adedin hepsi yazıldı ama iş bitmedi (ör. tornada kalan işlem)
+      return '<div class="devam-oge"><div><b>Sipariş ' + esc(g.no) + '</b><span>' + (tamami ? esc(g.sipAdet) + ' adet yazıldı, iş bitmedi · ' : g.kalan !== '' && g.kalan != null ? (ad != null ? esc(g.sipAdet) + ' adetin ' + ad + ' adedi yapıldı · ' : '') + 'kalan ' + esc(g.kalan) + ' adet · ' : '') +
         gun + ' ' + saatYaz(g.bit) + (x.kim && x.kim !== kimlik.personel ? ' · ' + esc(x.kim) : '') + sonIslem(g) + '</span></div><button class="btn btn-ikincil" type="button" data-no="' + esc(g.no) + '">Devam et</button></div>'; }).join('');
     $('kSiparis').hidden = !s; $('bSipBaslat').hidden = !!s;
     const tor = tornaMi(), isl = tor && s ? s.islem : null;
@@ -1493,7 +1494,7 @@ body.tv .mola-bant { font-size: 20px; }
       if (o.siparis) acik.add(String(o.siparis.no));
       o.gecmis.forEach(g => { if (g.tur !== 'siparis') return; const n = String(g.no); if (!son[n] || g.bit > son[n].g.bit) son[n] = { g, kim: o.kim.personel }; });
     });
-    return Object.keys(son).map(n => son[n]).filter(x => !acik.has(String(x.g.no)) && x.g.sonuc === 'Yarım bırakıldı' && Number(x.g.kalan) !== 0 && gecen(x.g.bit) < 14 * 86400000)
+    return Object.keys(son).map(n => son[n]).filter(x => !acik.has(String(x.g.no)) && x.g.sonuc === 'Yarım bırakıldı' && gecen(x.g.bit) < 14 * 86400000)
       .sort((a, b) => String(b.g.bit).localeCompare(String(a.g.bit))).slice(0, 4);
   }
   /** Aynı siparişin bu makinedeki en son kapanmış parçası (delik bilgileri için). */
@@ -1530,15 +1531,16 @@ body.tv .mola-bant { font-size: 20px; }
     let onceki = null, kimdi = '';
     if (no) Object.keys(S.kisiler).forEach(a => {
       const kk = S.kisiler[a]; if (!kk.kim || kk.kim.bolum !== kimlik.bolum || (kk.kim.makine || '') !== (kimlik.makine || '') || ayriDunya(kk.kim, kimlik)) return;
-      kk.gecmis.forEach(g => { if (g.tur === 'siparis' && String(g.no) === no && g.sonuc === 'Yarım bırakıldı' && Number(g.kalan) > 0 && (!onceki || g.bit > onceki.bit)) { onceki = g; kimdi = kk.kim.personel; } });
+      kk.gecmis.forEach(g => { if (g.tur === 'siparis' && String(g.no) === no && g.sonuc === 'Yarım bırakıldı' && (!onceki || g.bit > onceki.bit)) { onceki = g; kimdi = kk.kim.personel; } });
     });
     if (onceki && (!$('sAdet').value || sAdetOto)) {
-      $('sAdet').value = onceki.kalan; sAdetOto = true;
+      $('sAdet').value = Number(onceki.kalan) > 0 ? onceki.kalan : (onceki.sipAdet == null ? '' : onceki.sipAdet); sAdetOto = true;
       if (tornaMi() && onceki.siparisTip) { tornaOlcuYaz(onceki); sBag.ciz(Object.assign({ tip: onceki.siparisTip }, bekleyenOneri({ no, islemler: [] }))); }
       const bugunMu = gunAnahtar(onceki.bit) === gunAnahtar(Date.now()), dunMu = gunAnahtar(onceki.bit) === gunAnahtar(Date.now() - 86400000);
       $('sAdetIpucu').textContent = 'Bu sipariş ' + (bugunMu ? 'bugün ' : dunMu ? 'dün ' : new Date(onceki.bit).toLocaleDateString('tr-TR') + ' ') + saatYaz(onceki.bit) + '’de' +
         (kimdi && kimdi !== kimlik.personel ? ' ' + kimdi + ' tarafından' : '') + ' yarım bırakıldı: ' +
-        (onceki.sipAdet !== '' && onceki.sipAdet != null ? onceki.sipAdet + ' adetin ' + onceki.adet + ' adedi yapıldı, kalan ' : 'kalan ') + onceki.kalan + ' adet yazıldı. Farklıysa değiştirin.';
+        (Number(onceki.kalan) > 0 ? (onceki.sipAdet !== '' && onceki.sipAdet != null ? onceki.sipAdet + ' adetin ' + onceki.adet + ' adedi yapıldı, kalan ' : 'kalan ') + onceki.kalan + ' adet yazıldı.'
+          : 'adedin tamamı yazılmıştı, iş bitmemişti; aynı adet (' + $('sAdet').value + ') yazıldı.') + ' Farklıysa değiştirin.';
       $('sAdetIpucu').hidden = false;
     } else if (!onceki && sAdetOto) { $('sAdet').value = ''; sAdetOto = false; $('sAdetIpucu').hidden = true; }
   });
