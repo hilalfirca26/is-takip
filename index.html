@@ -427,13 +427,14 @@ body.tv .mola-bant { font-size: 20px; }
       <div class="nedenler coklu" id="sBagIslem" role="group" aria-labelledby="sBagEt"></div>
       <div class="alan" id="sBagAcikAlan" hidden><label for="sBagAcik">Ne yapılıyor?<i>*</i></label><input id="sBagAcik" autocomplete="off" placeholder="Örn. kama açma"></div>
       <div id="sBagTarafAlan" hidden>
-        <span class="etiket" id="sBagTarafEt">Taraf</span>
-        <div class="secim uclu" role="radiogroup" aria-labelledby="sBagTarafEt">
-          <input type="radio" name="sBagTaraf" id="sBagT0" value="tek"><label for="sBagT0">Tek taraf</label>
-          <input type="radio" name="sBagTaraf" id="sBagT1" value="1"><label for="sBagT1">1. taraf, sonra 2. taraf</label>
-          <input type="radio" name="sBagTaraf" id="sBagT2" value="2"><label for="sBagT2">2. taraf</label>
+        <span class="etiket" id="sBagTarafEt">Nasıl işlenecek?</span>
+        <div class="secim" role="radiogroup" aria-labelledby="sBagTarafEt">
+          <input type="radio" name="sBagTaraf" id="sBagT0" value="tek"><label for="sBagT0">Bir kerede işleme</label>
+          <input type="radio" name="sBagTaraf" id="sBagT1" value="1"><label for="sBagT1">Çift taraflı işleme</label>
         </div>
+        <p class="sub" id="sBagTarafNot">Çift taraflı: önce bir tarafı işlenir, bitince parça çevrilip öbür tarafı işlenir.</p>
       </div>
+      <p class="sub" id="sBagOburAlan" hidden><b>Öbür taraf:</b> ilk tarafta yapılan işlemler seçili geldi, bu tarafta farklıysa ekleyip çıkarın. <button type="button" class="link" id="sBagOburDegil">Bu öbür taraf değil, yeni bağlama</button></p>
       <label class="onay-kutu"><input type="checkbox" id="sBagAyar"><span>Önce ayar yapacağım (ayar duruş sayılır, bitince bağlama kendiliğinden başlar)</span></label>
     </div>
       </div>
@@ -460,13 +461,14 @@ body.tv .mola-bant { font-size: 20px; }
       <div class="nedenler coklu" id="iBagIslem" role="group" aria-labelledby="iBagEt"></div>
       <div class="alan" id="iBagAcikAlan" hidden><label for="iBagAcik">Ne yapılıyor?<i>*</i></label><input id="iBagAcik" autocomplete="off" placeholder="Örn. kama açma"></div>
       <div id="iBagTarafAlan" hidden>
-        <span class="etiket" id="iBagTarafEt">Taraf</span>
-        <div class="secim uclu" role="radiogroup" aria-labelledby="iBagTarafEt">
-          <input type="radio" name="iBagTaraf" id="iBagT0" value="tek"><label for="iBagT0">Tek taraf</label>
-          <input type="radio" name="iBagTaraf" id="iBagT1" value="1"><label for="iBagT1">1. taraf, sonra 2. taraf</label>
-          <input type="radio" name="iBagTaraf" id="iBagT2" value="2"><label for="iBagT2">2. taraf</label>
+        <span class="etiket" id="iBagTarafEt">Nasıl işlenecek?</span>
+        <div class="secim" role="radiogroup" aria-labelledby="iBagTarafEt">
+          <input type="radio" name="iBagTaraf" id="iBagT0" value="tek"><label for="iBagT0">Bir kerede işleme</label>
+          <input type="radio" name="iBagTaraf" id="iBagT1" value="1"><label for="iBagT1">Çift taraflı işleme</label>
         </div>
+        <p class="sub" id="iBagTarafNot">Çift taraflı: önce bir tarafı işlenir, bitince parça çevrilip öbür tarafı işlenir.</p>
       </div>
+      <p class="sub" id="iBagOburAlan" hidden><b>Öbür taraf:</b> ilk tarafta yapılan işlemler seçili geldi, bu tarafta farklıysa ekleyip çıkarın. <button type="button" class="link" id="iBagOburDegil">Bu öbür taraf değil, yeni bağlama</button></p>
       <label class="onay-kutu"><input type="checkbox" id="iBagAyar"><span>Önce ayar yapacağım (ayar duruş sayılır, bitince bağlama kendiliğinden başlar)</span></label>
     </div>
     <p class="sub" id="iNot"></p>
@@ -1195,7 +1197,9 @@ body.tv .mola-bant { font-size: 20px; }
   /** Siparişin tipine göre gösterilecek işlemler (Ayarlar - Torna İşlemleri). */
   function islemListesi(tip) { return (AYAR.islemler || VARSAYILAN.islemler).filter(x => !tip || !x.tip || x.tip === 'İkisi de' || x.tip === tip); }
   /** "Alın tornalama + Boylama · 1. taraf" */
-  function islemAdi(i) { return i.ad + (i.sira ? ' · ' + i.sira : ''); }
+  function islemAdi(i) { return i.ad + (i.sira ? ' · ' + tarafYazi(i.sira) : ''); }
+  /** Kayıtta "1. taraf / 2. taraf" kalır; ekranda "ilk taraf / öbür taraf" */
+  function tarafYazi(s) { return /^1\./.test(s || '') ? 'ilk taraf' : /^2\./.test(s || '') ? 'öbür taraf' : s; }
   const birinci = x => /^1\./.test(x || ''), ikinci = x => /^2\./.test(x || '');
   /** Siparişin (önceki parçaları dahil) bağlamalarında 1. ve 2. taraf adetleri: { 'Alın tornalama + Boylama': { b1: 200, b2: 0 } } */
   function tarafDurumu(s) {
@@ -1360,12 +1364,12 @@ body.tv .mola-bant { font-size: 20px; }
   /** Bağlama seçici: p = 's' (sipariş formu) ya da 'i' (yeni bağlama ekranı) */
   function bagSecici(p) {
     const el = id => $(p + 'Bag' + id), radyo = () => document.querySelectorAll('input[name="' + p + 'BagTaraf"]');
-    let sec = [], tarafElle = false, tip = '', eslesen = '';
+    let sec = [], tarafElle = false, tip = '', eslesen = '', obur = false;
     const tarafYaz = v => radyo().forEach(r => r.checked = r.value === v);
     const durum = () => {
       el('Islem').querySelectorAll('.neden').forEach(b => b.setAttribute('aria-pressed', sec.indexOf(b.dataset.deger) >= 0 ? 'true' : 'false'));
       const sil = tip === 'Silindir';
-      el('TarafAlan').hidden = !sil;
+      el('TarafAlan').hidden = !sil || obur; el('OburAlan').hidden = !obur;
       if (sil && !tarafElle) tarafYaz(sec.some(ad => tanim(ad).ikiTaraf) ? '1' : 'tek');
       el('AcikAlan').hidden = !sec.some(ad => tanim(ad).aciklama);
     };
@@ -1376,10 +1380,12 @@ body.tv .mola-bant { font-size: 20px; }
       hata(p === 's' ? 'bHata' : 'iHata', ''); durum();
     });
     radyo().forEach(r => r.addEventListener('change', () => { tarafElle = true; }));
+    // Öbür taraf önerisi yanlışsa: normal yeni bağlama
+    el('OburDegil').addEventListener('click', () => { obur = false; eslesen = ''; tarafElle = false; if (p === 'i') $('iBaslik').textContent = 'Yeni bağlama'; durum(); });
     const api = {
       /** o: { tip, onerilen: [işlem adları], taraf: '2' } */
       ciz(o) {
-        tip = o.tip || ''; tarafElle = false; eslesen = o.eslesen || '';
+        tip = o.tip || ''; tarafElle = false; eslesen = o.eslesen || ''; obur = o.taraf === '2';
         const liste = tip ? islemListesi(tip).map(x => x.ad) : [];
         sec = (o.onerilen || []).filter(ad => liste.indexOf(ad) >= 0);
         el('Islem').innerHTML = liste.map(ad => '<button type="button" class="neden" aria-pressed="false" data-deger="' + esc(ad) + '">' + esc(ad) + '</button>').join('');
@@ -1396,7 +1402,7 @@ body.tv .mola-bant { font-size: 20px; }
         const ac = el('Acik').value.trim();
         if (!el('AcikAlan').hidden && !ac) { el('Acik').classList.add('hatali'); el('Acik').focus(); return { hata: 'Ne yapıldığını kısaca yazın (örn. kama açma).' }; }
         const r = tip === 'Silindir' ? [...radyo()].find(x => x.checked) : null;
-        const sira = TARAF[r ? r.value : 'tek'] || '', ad = sirali.join(' + ');
+        const sira = obur ? TARAF['2'] : TARAF[r ? r.value : 'tek'] || '', ad = sirali.join(' + ');
         const bek = ikinci(sira) && !eslesen && K().siparis ? bekleyenTaraf(K().siparis)[0] : null;
         return { islemler: sirali, ad, sira, eslesen: ikinci(sira) ? (eslesen || (bek ? bek.ad : ad)) : '', aciklama: ac, ayar: el('Ayar').checked };
       }
@@ -1411,11 +1417,11 @@ body.tv .mola-bant { font-size: 20px; }
     iBas = bas || null;
     const o = oneri || bekleyenOneri(s);
     iBag.ciz(Object.assign({ tip: s.siparisTip }, o));
-    $('iBaslik').textContent = o.taraf === '2' ? '2. taraf bağlaması' : 'Yeni bağlama';
+    $('iBaslik').textContent = o.taraf === '2' ? 'Öbür taraf bağlaması' : 'Yeni bağlama';
     $('iAlt').textContent = 'Sipariş ' + s.no + (s.siparisTip ? ' · ' + tipYazi(s) : '') + ' · ' + etiket();
     const biten = (s.islemler || []).map(islemAdi), bek = bekleyenTaraf(s);
-    $('iNot').textContent = (o.taraf === '2' ? '1. tarafta yapılan işlemler seçili geldi; bu tarafta farklıysa ekleyip çıkarın. ' : '') + (iBas && Date.now() - new Date(iBas).getTime() > 60000 ? 'Bağlama ' + saatYaz(iBas) + '’den başlamış sayılacak. ' : '') + (biten.length ? 'Bu siparişte biten: ' + biten.join(', ') + '. ' : '') +
-      (bek.length ? '2. tarafı bekleyen: ' + bek.map(x => x.ad + ' (1. taraf ' + x.b1 + ' adet, 2. taraf ' + x.b2 + ' adet)').join(', ') : '');
+    $('iNot').textContent = (iBas && Date.now() - new Date(iBas).getTime() > 60000 ? 'Bağlama ' + saatYaz(iBas) + '’den başlamış sayılacak. ' : '') + (biten.length ? 'Bu siparişte biten: ' + biten.join(', ') + '. ' : '') +
+      (bek.length ? 'Öbür tarafı bekleyen: ' + bek.map(x => x.ad + ' (ilk taraf ' + x.b1 + ' adet, öbür taraf ' + x.b2 + ' adet)').join(', ') : '');
     hata('iHata', ''); goster('ekIslem');
   }
   $('bIslemBaslat').addEventListener('click', () => islemSecAc());
@@ -1436,9 +1442,9 @@ body.tv .mola-bant { font-size: 20px; }
     const ilkTaraf = birinci(i.sira), d = ikinci(i.sira) ? tarafDurumu(s)[i.eslesen || i.ad] : null;
     $('ibAdet').value = d && d.b1 > d.b2 ? d.b1 - d.b2 : (s.sipAdet == null ? '' : s.sipAdet); $('ibAdet').classList.remove('hatali');
     $('ibOnce').value = ''; $('ibOnceAlan').hidden = true; $('ibOnceAc').hidden = dun;
-    $('bIbKapat').textContent = ilkTaraf ? 'Siparişi şimdi kapat (2. taraf sonra yapılacak)' : kapat ? 'Bağlamayı bitir ve siparişi kapat' : 'Sipariş bitti, siparişi kapat';
+    $('bIbKapat').textContent = ilkTaraf ? 'Siparişi şimdi kapat (öbür taraf sonra yapılacak)' : kapat ? 'Bağlamayı bitir ve siparişi kapat' : 'Sipariş bitti, siparişi kapat';
     hata('ibHata', ''); goster('ekIslemBitir');
-    if (ilkTaraf) $('altOnay').textContent = '2. tarafa geç (öbür tarafı bağla)';
+    if (ilkTaraf) $('altOnay').textContent = 'Öbür tarafa geç (parçayı çevir)';
     else if (kapat) { $('altOnay').textContent = 'Başka bağlama da var, yeni bağlama'; }
     $('ibAdet').select();
   }
@@ -1479,7 +1485,7 @@ body.tv .mola-bant { font-size: 20px; }
     }
     // 1. taraf bitince 2. taraf bağlaması: aynı işlemler seçili gelir, öbür tarafta farklıysa değiştirilir
     if (birinci(i.sira)) {
-      toast('1. taraf bitti · ' + adet + ' adet');
+      toast('İlk taraf bitti · ' + adet + ' adet');
       return islemSecAc(bit, { onerilen: i.islemler || i.ad.split(' + '), taraf: '2', eslesen: i.ad });
     }
     toast(islemAdi(i) + ' bitti · ' + adet + ' adet');
@@ -1497,7 +1503,7 @@ body.tv .mola-bant { font-size: 20px; }
     const l = g.islemler || [], son = l[l.length - 1]; if (!son) return '';
     const bek = tornaMi() ? bekleyenTaraf({ no: g.no, islemler: [] }) : [];
     return '<br>Son bağlama: ' + esc(islemAdi(son)) + (son.adet !== '' && son.adet != null ? ' (' + esc(son.adet) + ' adet)' : '') +
-      (bek.length ? ' · <b>2. taraf bekliyor: ' + bek.map(x => esc(x.ad)).join(', ') + '</b>' : '');
+      (bek.length ? ' · <b>Öbür taraf bekliyor: ' + bek.map(x => esc(x.ad)).join(', ') + '</b>' : '');
   }
   /** Bu makinede (makinesiz bölümde: bu kişide) en son parçası "yarım bırakıldı" olan, şu an açık olmayan siparişler (son 14 gün). */
   function yarimKalanlar() {
@@ -1593,8 +1599,8 @@ body.tv .mola-bant { font-size: 20px; }
       const d = tarafDurumu(s), b = bek[bek.length - 1];
       $('kpAdet').value = (s.islemler || []).filter(x => (x.eslesen || x.ad) === b.ad && ikinci(x.sira)).reduce((t, x) => t + (Number(x.adet) || 0), 0);
       $('kpYarim').checked = true;
-      $('kpTaraf').innerHTML = bek.map(x => '<b>' + esc(x.ad) + '</b>: 1. taraf ' + x.b1 + ' adet, 2. taraf ' + x.b2 + ' adet').join('<br>') +
-        '<br>2. tarafı işlenmeyen parça bitmiş sayılmaz. Biten adede sadece iki tarafı da işlenenleri yazın; sipariş yarım kalır, devam ederken 2. taraf hazır gelir.';
+      $('kpTaraf').innerHTML = bek.map(x => '<b>' + esc(x.ad) + '</b>: ilk taraf ' + x.b1 + ' adet, öbür taraf ' + x.b2 + ' adet').join('<br>') +
+        '<br>Öbür tarafı işlenmeyen parça bitmiş sayılmaz. Biten adede sadece iki tarafı da işlenenleri yazın; sipariş yarım kalır, devam ederken öbür taraf hazır gelir.';
     }
     kalanGoster();
     hata('kpHata', ''); kapatOzet(); goster('ekKapat'); $('kpAdet').focus();
