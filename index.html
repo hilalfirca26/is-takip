@@ -262,6 +262,18 @@ body.tv .mola-bant { font-size: 20px; }
 .onay-kutu:has(input:checked) { border-color: var(--stop); background: var(--stop-soft); }
 .secim.dortlu { grid-template-columns: repeat(4, 1fr); }
 @media (max-width: 520px) { .secim.dortlu { grid-template-columns: repeat(2, 1fr); } }
+.so-liste { display: grid; gap: 10px; }
+.so-kart { background: var(--surface); border: 1.5px solid var(--line); border-radius: var(--r); padding: 12px 14px; display: grid; gap: 6px; font-size: 15px; }
+.so-kart .so-ust { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.so-kart .so-ust b { font-size: 17px; }
+.so-kart .so-ust span { color: var(--muted); }
+.so-cubuk { display: flex; height: 10px; border-radius: 5px; overflow: hidden; background: var(--sunk); }
+.so-cubuk i { display: block; height: 100%; }
+.so-cubuk .u { background: var(--accent); } .so-cubuk .d { background: var(--stop); }
+.so-satir { color: var(--ink); line-height: 1.45; }
+.so-satir em { font-style: normal; color: var(--muted); }
+.so-acik { margin: 0; padding: 8px 0 0 18px; border-top: 1px dashed var(--line); display: grid; gap: 3px; font-size: 14px; }
+.so-acik em { font-style: normal; color: var(--muted); }
 </style>
 </head>
 <body>
@@ -356,6 +368,8 @@ body.tv .mola-bant { font-size: 20px; }
   <section id="ekPanelGun" hidden>
     <div><h1 id="pgBaslik">Bugün</h1><p class="sub" id="pgAlt"></p></div>
     <p class="ozet-satir" id="pgToplam" hidden></p>
+    <div id="pgSiparis" hidden><h2>Sipariş bazında süre</h2><div class="so-liste" id="pgSipListe"></div></div>
+    <h2 id="pgAkisBaslik" hidden>Günün akışı</h2>
     <ul class="liste" id="pgListe"></ul>
     <button class="btn btn-ikincil" id="pgGeri" type="button">Panele dön</button>
   </section>
@@ -2192,7 +2206,7 @@ body.tv .mola-bant { font-size: 20px; }
   async function panelGunAc(anahtar, ad) {
     if (!anahtar) return;
     $('pgBaslik').textContent = ad + ' · bugün'; $('pgAlt').textContent = 'Kayıtlar tablodan getiriliyor…';
-    $('pgToplam').hidden = true; $('pgListe').innerHTML = '';
+    $('pgToplam').hidden = true; $('pgListe').innerHTML = ''; $('pgSiparis').hidden = true; $('pgAkisBaslik').hidden = true;
     goster('ekPanelGun');
     let j = null;
     if (DEMO) j = { ok: true, siparisler: [], duruslar: [] };
@@ -2211,6 +2225,39 @@ body.tv .mola-bant { font-size: 20px; }
     $('pgToplam').hidden = !kay.length;
     $('pgAlt').textContent = (kisiler.filter(Boolean).join(', ') || 'Bugün kayıt yok') + ' · ' + new Date().toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' });
     $('pgListe').innerHTML = kay.length ? akisHtml(kay, gunAnahtar(Date.now()), new Set()) : '<p class="bos">Bugün bu kartta kayıt yok.</p>';
+    const ozet = siparisOzetHtml(j.siparisler || [], j.duruslar || []);
+    $('pgSipListe').innerHTML = ozet; $('pgSiparis').hidden = !ozet; $('pgAkisBaslik').hidden = !ozet || !kay.length;
+  }
+  /** Sipariş notları ve duruş açıklamaları (saatiyle) */
+  function aciklamalar(s, durlar) {
+    const l = durlar.filter(x => x.aciklama).sort((a, b) => String(a.bas).localeCompare(String(b.bas)))
+      .map(x => '<li><em>' + saatYaz(x.bas) + ' ' + esc(x.neden) + ':</em> ' + esc(x.aciklama) + '</li>');
+    String(s.not || '').split(' | ').filter(Boolean).forEach(n => l.push('<li><em>Not:</em> ' + esc(n) + '</li>'));
+    if (s.isaret) l.push('<li><em>İşaret:</em> ' + esc(s.isaret) + '</li>');
+    return l.length ? '<ul class="so-acik">' + l.join('') + '</ul>' : '';
+  }
+  /** Panel gün özeti: her sipariş için toplam / üretim / duruş (nedenlere göre) ve tornada bağlamalar; sipariş dışı duruşlar ayrı. */
+  function siparisOzetHtml(sipler, durlar) {
+    const now = new Date(), dkx = x => x.acik ? molaHaric(x.bas, now) : (Number(x.sure) || 0);
+    const nedenler = l => { const o = {}; l.forEach(x => { o[x.neden] = (o[x.neden] || 0) + dkx(x); }); return Object.keys(o).sort((a, b) => o[b] - o[a]).map(n => [n, o[n]]); };
+    const kart = sipler.slice().sort((a, b) => String(a.bas).localeCompare(String(b.bas))).map(s => {
+      if (s.acik && gunAnahtar(s.bas) !== gunAnahtar(now)) // önceki günden açık kalmış: süre anlamlı değil, uyarı olarak
+        return '<div class="so-kart"><div class="so-ust"><b>Sipariş ' + esc(s.no) + '</b><span>' + (s.personel ? esc(s.personel) + ' · ' : '') + new Date(s.bas).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' }) + ' ' + saatYaz(s.bas) +
+          ' başladı</span></div><div class="so-satir"><b>Önceki günden açık kalmış, kapatılmamış.</b> <em>Tablette kapatılınca süresi gün sonuna göre hesaplanır.</em></div></div>';
+      const top = s.acik ? molaHaric(s.bas, now) : (Number(s.brut) || 0);
+      const nd = nedenler(durlar.filter(x => x.sipId === s.id)), dur = Math.min(top, nd.reduce((t, x) => t + x[1], 0)), ur = Math.max(0, top - dur);
+      const yuzde = v => top ? Math.round(100 * v / top) : 0;
+      const isl = (s.islemler || []).map(i => esc(i.ad) + ' <em>' + (i.acik ? 'sürüyor' : (i.dk === '' || i.dk == null ? '?' : esc(i.dk)) + ' dk') + (i.adet !== '' && i.adet != null ? ' · ' + esc(i.adet) + ' ad' : '') + '</em>');
+      return '<div class="so-kart"><div class="so-ust"><b>Sipariş ' + esc(s.no) + '</b><span>' + (s.personel ? esc(s.personel) + ' · ' : '') + saatYaz(s.bas) + '–' + (s.acik ? 'devam ediyor' : saatYaz(s.bit)) + ' · ' + top + ' dk</span></div>' +
+        '<div class="so-cubuk" role="img" aria-label="Üretim ' + ur + ' dk, duruş ' + dur + ' dk"><i class="u" style="width:' + yuzde(ur) + '%"></i><i class="d" style="width:' + yuzde(dur) + '%"></i></div>' +
+        '<div class="so-satir"><b>Üretim ' + ur + ' dk</b> · <b>Duruş ' + dur + ' dk</b>' + (nd.length ? ': ' + nd.map(x => esc(x[0]) + ' <em>' + x[1] + ' dk</em>').join(' · ') : '') +
+        (!s.acik && s.adet !== '' && s.adet != null ? ' · ' + esc(s.adet) + ' adet' : '') + '</div>' +
+        (isl.length ? '<div class="so-satir">Bağlamalar: ' + isl.join(' | ') + '</div>' : '') + aciklamalar(s, durlar.filter(x => x.sipId === s.id)) + '</div>';
+    });
+    const disari = nedenler(durlar.filter(x => !x.sipId)), disAcik = aciklamalar({}, durlar.filter(x => !x.sipId));
+    if (disari.length) kart.push('<div class="so-kart"><div class="so-ust"><b>Sipariş dışı duruşlar</b><span>' + disari.reduce((t, x) => t + x[1], 0) + ' dk</span></div><div class="so-satir">' +
+      disari.map(x => esc(x[0]) + ' <em>' + x[1] + ' dk</em>').join(' · ') + '</div>' + disAcik + '</div>');
+    return kart.join('');
   }
   const kartTik = e => { const k = e.target.closest('.pk'); if (k) panelGunAc(k.dataset.anahtar, k.dataset.ad); };
   ['pnMakine', 'pnIstasyon'].forEach(id => {
