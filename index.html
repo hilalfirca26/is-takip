@@ -552,7 +552,7 @@ body.tv .mola-bant { font-size: 20px; }
     <div class="nedenler" id="arKim" role="group" aria-labelledby="arKimEt"></div>
     <span class="etiket" id="arYapEt">Ne yapıldı?<i>*</i></span>
     <div class="nedenler" id="arYap" role="group" aria-labelledby="arYapEt"></div>
-    <div class="alan" id="arParcaAlan" hidden><label for="arParca">Hangi parça değişti?<i>*</i></label><input id="arParca" autocomplete="off" placeholder="Örn. ensör yayı, kayış"></div>
+    <div class="alan" id="arParcaAlan" hidden><label for="arParca">Hangi parça değişti?<i>*</i></label><input id="arParca" autocomplete="off" placeholder="Parçanın adı"></div>
     <p class="sub">Makine arıza formu (BA-FR-05) yerine geçer. Ana neden ve kalıcı çözümü bölüm sorumlusu tablodan tamamlar.</p>
     <p class="hata" id="arHata" hidden></p>
   </section>
@@ -1866,7 +1866,7 @@ body.tv .mola-bant { font-size: 20px; }
   }
   function arizaDetayZorunlu(z) {
     $('arDetayEt').innerHTML = z ? 'Arıza detayı<i>*</i>' : 'Arıza detayı <span class="etk-not">isteğe bağlı</span>';
-    $('arDetay').placeholder = z ? 'Zorunlu: ne arızasıydı?' : 'Örn. tel koptu, ensör sıkıştı';
+    $('arDetay').placeholder = z ? 'Zorunlu: kısaca ne oldu?' : 'Kısaca ne oldu?';
   }
   ['arTur', 'arKim', 'arYap'].forEach(kap => $(kap).addEventListener('click', e => {
     const b = e.target.closest('.neden'); if (!b) return;
