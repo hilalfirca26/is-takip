@@ -543,6 +543,20 @@ body.tv .mola-bant { font-size: 20px; }
     <p class="hata" id="btHata" hidden></p>
   </section>
 
+  <section id="ekAriza" hidden>
+    <div><h1>Arıza bitti</h1><p class="sub" id="arAlt"></p></div>
+    <span class="etiket" id="arTurEt">Ne arızasıydı?<i>*</i></span>
+    <div class="nedenler" id="arTur" role="group" aria-labelledby="arTurEt"></div>
+    <div class="alan"><label for="arDetay" id="arDetayEt">Arıza detayı</label><input id="arDetay" autocomplete="off"></div>
+    <span class="etiket" id="arKimEt">Kim giderdi?<i>*</i></span>
+    <div class="nedenler" id="arKim" role="group" aria-labelledby="arKimEt"></div>
+    <span class="etiket" id="arYapEt">Ne yapıldı?<i>*</i></span>
+    <div class="nedenler" id="arYap" role="group" aria-labelledby="arYapEt"></div>
+    <div class="alan" id="arParcaAlan" hidden><label for="arParca">Hangi parça değişti?<i>*</i></label><input id="arParca" autocomplete="off" placeholder="Örn. ensör yayı, kayış"></div>
+    <p class="sub">Makine arıza formu (BA-FR-05) yerine geçer. Ana neden ve kalıcı çözümü bölüm sorumlusu tablodan tamamlar.</p>
+    <p class="hata" id="arHata" hidden></p>
+  </section>
+
   <section id="ekBosluk" hidden>
     <div><h1>Bu sürede ne oldu?</h1><p class="sub" id="bsAlt"></p></div>
     <div class="nedenler" id="bsNedenler" role="group" aria-label="Kayıt yokken ne oldu"></div>
@@ -660,6 +674,8 @@ body.tv .mola-bant { font-size: 20px; }
     uyari: { 'TEMİZLİK': 30, 'AYAR': 120, 'ARIZA': 120, 'MALZEME BEKLEME': 60, 'BOŞTA / SİPARİŞ YOK': 240, 'KİŞİSEL İHTİYAÇ': 30, 'GEÇ AÇILIŞ': 30,
       'PROGRAM / ÇİZİM': 150, 'TEL / SARF DEĞİŞİMİ': 60, 'ELEKTRİK / KOMPRESÖR': 60, 'BAKIM': 180, 'TOPLANTI': 60, 'BAŞKA MAKİNE AYAR': 120, 'BAŞKA MAKİNEDE ÇALIŞTIM': 240, 'BAŞKA MAKİNE ARIZA': 120, 'KALIP DEĞİŞTİRME': 120, 'ENSÖR DEĞİŞTİRME': 60, 'PAH KIRMA': 60, 'DİĞER': 60 },
     esik: 10,
+    arizaTurleri: { cnc: ['Ensör', 'Tel / kıl besleme', 'İğne / delici', 'Kıl haznesi / kesme', 'Motor / sürücü', 'Elektrik / kablo / sensör', 'Hava / vakum', 'Program / kontrol', 'Mekanik (kayış, rulman, kızak)', 'Diğer'],
+      torna: ['Ayna / punta', 'Kesici takım', 'Motor', 'Elektrik', 'Mekanik', 'Diğer'] },
     tornaNedenler: ['TEMİZLİK', 'AYAR', 'ARIZA', 'MALZEME BEKLEME', 'BOŞTA / SİPARİŞ YOK', 'KİŞİSEL İHTİYAÇ', 'GEÇ AÇILIŞ', 'ELEKTRİK / KOMPRESÖR', 'BAKIM', 'TOPLANTI', 'BAŞKA MAKİNEDE ÇALIŞTIM', 'DİĞER'],
     islemler: ['Çap işleme', 'Göbek işleme', 'Boylama', 'Alın tornalama', 'Mil işleme', 'Punta yeri açma', 'Kalem açma', 'Deterjan kanalı', 'Torna bağlama aparatı', 'Çakım bağlama aparatı',
       'Dairesel tornalama', 'Flanş yatağı açma', 'Taban düzeltme (balans)'].map(ad => ({ ad, tip: 'İkisi de', aciklama: false, ikiTaraf: ['Göbek işleme', 'Boylama', 'Alın tornalama', 'Mil işleme', 'Punta yeri açma'].indexOf(ad) >= 0 }))
@@ -821,12 +837,12 @@ body.tv .mola-bant { font-size: 20px; }
   }
 
   /* ---------- Ekranlar ---------- */
-  const ALT = { ekIslem: 'Bağlamayı Başlat', ekIslemBitir: 'Yeni Bağlama', ekBaslat: 'Siparişi Başlat', ekKapat: 'Siparişi Kapat', ekDurus: 'Duruşu Başlat', ekBitir: 'Duruşu Bitir', ekBosluk: 'Kaydet ve Devam Et', ekEkle: 'Duruşu Ekle', ekNot: 'Notu Kaydet', ekDuzelt: 'Düzeltmeyi Kaydet', ekSifre: 'Onayla' };
-  const DUR_EKRAN = { ekDurus: 1, ekBitir: 1, ekEkle: 1 };
+  const ALT = { ekIslem: 'Bağlamayı Başlat', ekIslemBitir: 'Yeni Bağlama', ekBaslat: 'Siparişi Başlat', ekKapat: 'Siparişi Kapat', ekDurus: 'Duruşu Başlat', ekBitir: 'Duruşu Bitir', ekBosluk: 'Kaydet ve Devam Et', ekEkle: 'Duruşu Ekle', ekNot: 'Notu Kaydet', ekAriza: 'Arızayı Kapat', ekDuzelt: 'Düzeltmeyi Kaydet', ekSifre: 'Onayla' };
+  const DUR_EKRAN = { ekDurus: 1, ekBitir: 1, ekEkle: 1, ekAriza: 1 };
   function goster(ad) {
     ekran = ad;
     ['ekYukle', 'ekGiris', 'ekAna', 'ekBaslat', 'ekKapat', 'ekDurus', 'ekBitir', 'ekBosluk', 'ekEkle', 'ekNot', 'ekOzet', 'ekDuzelt', 'ekSifre', 'ekPanel', 'ekPanelGun',
-      'ekIslem', 'ekIslemBitir', 'ekCncBas'].forEach(id => $(id).hidden = id !== ad);
+      'ekIslem', 'ekIslemBitir', 'ekCncBas', 'ekAriza'].forEach(id => $(id).hidden = id !== ad);
     $('altBar').hidden = !ALT[ad];
     if (ALT[ad]) { $('altOnay').textContent = ALT[ad]; $('altOnay').className = 'btn ' + (DUR_EKRAN[ad] ? 'btn-dur' : 'btn-ana'); }
     $('kimBtn').hidden = !kimlik || ad === 'ekGiris' || ad === 'ekPanel' || ad === 'ekPanelGun';
@@ -1178,12 +1194,12 @@ body.tv .mola-bant { font-size: 20px; }
 
   /* ---------- Yerel işlemler ---------- */
   const AYRILDI = 'Sipariş bitişinden sonra başladı';
-  function durusKapatYerel(k, bitis, isaret, kontrol, basilan) {
+  function durusKapatYerel(k, bitis, isaret, kontrol, basilan, ariza) {
     const d = k.durus; if (!d) return;
     if (d.ayrildi) isaret = [isaret, AYRILDI].filter(Boolean).join(' · ');
     const dakika = molaHaric(d.bas, bitis);
-    const ev = olay(k, 'DT', { id: d.id, t: bitis.toISOString(), basilan: basilan ? basilan.toISOString() : '', duzeltildi: !!basilan, isaret: isaret || '' }, kontrol);
-    k.gecmis.push({ tur: 'durus', id: d.id, neden: d.neden, aciklama: d.aciklama || '', sipId: d.sipId, sipNo: d.sipNo, bas: d.bas, bit: bitis.toISOString(), sure: dakika, isaret: isaret || '', oid: ev.oid });
+    const ev = olay(k, 'DT', Object.assign({ id: d.id, t: bitis.toISOString(), basilan: basilan ? basilan.toISOString() : '', duzeltildi: !!basilan, isaret: isaret || '' }, ariza ? { ariza } : {}), kontrol);
+    k.gecmis.push({ tur: 'durus', id: d.id, neden: d.neden, aciklama: [d.aciklama || '', ariza ? arizaYazi(ariza) : ''].filter(Boolean).join(' · '), sipId: d.sipId, sipNo: d.sipNo, bas: d.bas, bit: bitis.toISOString(), sure: dakika, isaret: isaret || '', oid: ev.oid });
     if (k.siparis && d.sipId === k.siparis.id) k.siparis.bitenDurusDk = (k.siparis.bitenDurusDk || 0) + dakika;
     k.durus = null;
     kaydet();
@@ -1825,6 +1841,55 @@ body.tv .mola-bant { font-size: 20px; }
     hata('dzHata', ''); goster('ekDuzelt'); $('dzAdet').focus();
   }
 
+  /* ---------- Arıza formu (BA-FR-05'in operatör kısmı): ARIZA duruşu kapanırken zorunlu ---------- */
+  const ARIZA_KIM = ['Kendim', 'Usta', 'Bakımcı', 'Dış servis'];
+  const ARIZA_YAPILAN = ['Ayar', 'Parça değişti', 'Temizlik / tıkanıklık', 'Geçici çözüm'];
+  let arizaHazir = null, arizaDevam = null, arizaGeri = 'ekAna';
+  const arizaSecim = { tur: '', kim: '', yapilan: '' };
+  function arizaTurListesi() {
+    const a = AYAR.arizaTurleri || {}, l = tornaMi() ? a.torna : a.cnc;
+    return l && l.length ? l : VARSAYILAN.arizaTurleri[tornaMi() ? 'torna' : 'cnc'];
+  }
+  function arizaYazi(a) { return [a.tur, a.detay, a.kim ? 'Bakım: ' + a.kim : '', a.yapilan ? a.yapilan + (a.parca ? ': ' + a.parca : '') : ''].filter(Boolean).join(' · '); }
+  /** Formu doldurulmuş arızayı bir kez verir (sonra temizler). */
+  function arizaAl() { const a = arizaHazir; arizaHazir = null; return a; }
+  /** Duruş kapanmadan önce arıza formu; kaydedilince devam() çalışır ve formu arizaAl() ile alır. */
+  function arizaFormAc(bas, bit, geri, devam) {
+    arizaDevam = devam; arizaGeri = geri; arizaHazir = null;
+    Object.keys(arizaSecim).forEach(x => arizaSecim[x] = '');
+    const dugme = (l, alan) => l.map(x => '<button type="button" class="neden" aria-pressed="false" data-alan="' + alan + '" data-deger="' + esc(x) + '">' + esc(x) + '</button>').join('');
+    $('arTur').innerHTML = dugme(arizaTurListesi(), 'tur'); $('arKim').innerHTML = dugme(ARIZA_KIM, 'kim'); $('arYap').innerHTML = dugme(ARIZA_YAPILAN, 'yapilan');
+    ['arParca', 'arDetay'].forEach(i => { $(i).value = ''; $(i).classList.remove('hatali'); });
+    $('arParcaAlan').hidden = true; arizaDetayZorunlu(false);
+    $('arAlt').textContent = 'Arıza ' + saatYaz(bas) + '–' + saatYaz(bit) + ' · ' + molaHaric(bas, bit) + ' dk · ' + etiket();
+    hata('arHata', ''); goster('ekAriza');
+  }
+  function arizaDetayZorunlu(z) {
+    $('arDetayEt').innerHTML = z ? 'Arıza detayı<i>*</i>' : 'Arıza detayı <span class="etk-not">isteğe bağlı</span>';
+    $('arDetay').placeholder = z ? 'Zorunlu: ne arızasıydı?' : 'Örn. tel koptu, ensör sıkıştı';
+  }
+  ['arTur', 'arKim', 'arYap'].forEach(kap => $(kap).addEventListener('click', e => {
+    const b = e.target.closest('.neden'); if (!b) return;
+    $(kap).querySelectorAll('.neden').forEach(x => x.setAttribute('aria-pressed', x === b ? 'true' : 'false'));
+    arizaSecim[b.dataset.alan] = b.dataset.deger; hata('arHata', '');
+    if (b.dataset.alan === 'yapilan') { $('arParcaAlan').hidden = b.dataset.deger !== 'Parça değişti'; if (!$('arParcaAlan').hidden) $('arParca').focus(); }
+    if (b.dataset.alan === 'tur') arizaDetayZorunlu(b.dataset.deger === 'Diğer');
+  }));
+  function arizaKaydet() {
+    const s = arizaSecim, parca = $('arParca').value.trim(), detay = $('arDetay').value.trim();
+    ['arParca', 'arDetay'].forEach(i => $(i).classList.remove('hatali'));
+    if (!s.tur) return hata('arHata', 'Ne arızası olduğunu seçin.');
+    if (s.tur === 'Diğer' && !detay) { $('arDetay').classList.add('hatali'); $('arDetay').focus(); return hata('arHata', '“Diğer” seçtiniz; arızanın ne olduğunu kısaca yazın.'); }
+    if (!s.kim) return hata('arHata', 'Arızayı kimin giderdiğini seçin.');
+    if (!s.yapilan) return hata('arHata', 'Ne yapıldığını seçin.');
+    if (s.yapilan === 'Parça değişti' && !parca) { $('arParca').classList.add('hatali'); $('arParca').focus(); return hata('arHata', 'Hangi parçanın değiştiğini yazın.'); }
+    const f = arizaDevam; arizaDevam = null; if (!f) return goster('ekAna');
+    arizaHazir = { tur: s.tur, kim: s.kim, yapilan: s.yapilan, parca: s.yapilan === 'Parça değişti' ? parca : '', detay };
+    f();
+  }
+  /** Arıza formundan sonra asıl ekranın kaydını yeniden çalıştırır (alanlar yerinde durur). */
+  function onaylaTekrar(ad) { goster(ad); onayla(); arizaHazir = null; }
+
   /* ---------- Duruşu bitir ---------- */
   $('btSimdi').addEventListener('change', () => { $('btSaatAlan').hidden = true; });
   $('btOnce').addEventListener('change', () => { $('btSaatAlan').hidden = false; $('btSaat').focus(); });
@@ -1838,9 +1903,14 @@ body.tv .mola-bant { font-size: 20px; }
       $('btUyari').textContent = 'Duruş ' + g + ' dakikadır açık. Bu neden için uyarı sınırı ' + sinir + ' dk. Gerçekten şimdi mi bitti?';
       return goster('ekBitir');
     }
-    const m = sure(molaHaricMs(d.bas, Date.now()));
-    durusKapatYerel(k, new Date(), '', null, null);
-    toast('Duruş bitirildi · ' + m); ciz(); tornaIslemSor();
+    const an = new Date();
+    const kapat = () => {
+      const m = sure(molaHaricMs(d.bas, an));
+      durusKapatYerel(k, an, '', null, null, arizaAl());
+      toast('Duruş bitirildi · ' + m); goster('ekAna'); ciz(); tornaIslemSor();
+    };
+    if (d.neden === 'ARIZA') return arizaFormAc(d.bas, an, 'ekAna', kapat);
+    kapat();
   });
 
   /* ---------- Enter: sonraki kutuya geç; son kutuda (ya da notta) ekranın ana düğmesine bas ---------- */
@@ -1862,6 +1932,8 @@ body.tv .mola-bant { font-size: 20px; }
 
   /* ---------- Onay / vazgeç ---------- */
   $('altIptal').addEventListener('click', () => {
+    arizaHazir = null;
+    if (ekran === 'ekAriza') { arizaDevam = null; if (arizaGeri === 'ekAna') { goster('ekAna'); return void ciz(); } return goster(arizaGeri); }
     if (geriOzet && (ekran === 'ekNot' || ekran === 'ekDuzelt')) { geriOzet = false; return ozetAc(ozetGun); }
     if (ekran === 'ekSifre' && sifreAmac === 'panel' && !kimlik) { girisDoldur(); return goster('ekGiris'); }
     gsModu = false;
@@ -1892,6 +1964,7 @@ body.tv .mola-bant { font-size: 20px; }
       return bitti(islemAdi(s.islem) + ' başladı');
     }
     if (ekran === 'ekIslemBitir') return void islemBitirKaydet(false);
+    if (ekran === 'ekAriza') return void arizaKaydet();
     if (ekran === 'ekBaslat') {
       bAlan.forEach(id => $(id).classList.remove('hatali'));
       const isaret = (id, m) => { $(id).classList.add('hatali'); $(id).focus(); hata('bHata', m); };
@@ -1983,12 +2056,14 @@ body.tv .mola-bant { font-size: 20px; }
         if (!$('btSaat').value) { $('btSaat').classList.add('hatali'); $('btSaat').focus(); return hata('btHata', 'Gerçek bitiş saatini yazın.'); }
         const bitis = saatte(d.bas, $('btSaat').value);
         if (!(bitis > new Date(d.bas)) || bitis > simdi) { $('btSaat').classList.add('hatali'); return hata('btHata', 'Bitiş saati, duruşun başladığı ' + saatYaz(d.bas) + ' ile şimdi arasında olmalı.'); }
+        if (d.neden === 'ARIZA' && !arizaHazir) return arizaFormAc(d.bas, bitis, 'ekBitir', () => onaylaTekrar('ekBitir'));
         durusKapatYerel(k, bitis, 'Bitiş düzeltildi', { konu: 'Duruş bitişi düzeltildi',
-          aciklama: d.neden + ': ' + saatYaz(d.bas) + '–' + $('btSaat').value + ' olarak girildi, butona ' + saatYaz(simdi) + ' basıldı.' }, simdi);
+          aciklama: d.neden + ': ' + saatYaz(d.bas) + '–' + $('btSaat').value + ' olarak girildi, butona ' + saatYaz(simdi) + ' basıldı.' }, simdi, arizaAl());
       } else {
+        if (d.neden === 'ARIZA' && !arizaHazir) return arizaFormAc(d.bas, simdi, 'ekBitir', () => onaylaTekrar('ekBitir'));
         const g = molaHaric(d.bas, simdi);
         durusKapatYerel(k, simdi, 'Uyarı sınırı aşıldı (' + sinir + ' dk)', { konu: 'Uzun duruş',
-          aciklama: d.neden + ' ' + g + ' dk sürdü (sınır ' + sinir + ' dk). Operatör “şimdi bitti” dedi.' }, null);
+          aciklama: d.neden + ' ' + g + ' dk sürdü (sınır ' + sinir + ' dk). Operatör “şimdi bitti” dedi.' }, null, arizaAl());
       }
       hata('btHata', '');
       return bitti('Duruş bitirildi', tornaIslemSor);
@@ -2064,9 +2139,11 @@ body.tv .mola-bant { font-size: 20px; }
           : 'Bugün kayıtlar arasında ' + dakika + ' dakikalık boş yer yok. Süreyi kontrol edin ya da “Saatini biliyorum” ile girin.');
         const sip = k.siparis || null, id = yeniNo('E'), isr = 'Süre olarak girildi (saat bilinmiyor)';
         hata('eHata', '');
-        const ev = olay(k, 'DE', { id, neden: eNeden, aciklama: ac, sipId: sip ? sip.id : '', sipNo: sip ? sip.no : '', bas: yer.bas.toISOString(), t: yer.bit.toISOString(), isaret: isr },
+        if (eNeden === 'ARIZA' && !arizaHazir) return arizaFormAc(yer.bas, yer.bit, 'ekEkle', () => onaylaTekrar('ekEkle'));
+        const arE = eNeden === 'ARIZA' ? arizaAl() : null;
+        const ev = olay(k, 'DE', Object.assign({ id, neden: eNeden, aciklama: ac, sipId: sip ? sip.id : '', sipNo: sip ? sip.no : '', bas: yer.bas.toISOString(), t: yer.bit.toISOString(), isaret: isr }, arE ? { ariza: arE } : {}),
           { konu: 'Duruş sonradan girildi', aciklama: eNeden + ' ' + dakika + ' dk, saati bilinmiyor (' + saatYaz(yer.bas) + '–' + saatYaz(yer.bit) + ' olarak yerleştirildi)' + (sip ? ' · sipariş ' + sip.no + ' içinde' : '') });
-        k.gecmis.push({ tur: 'durus', id, neden: eNeden, aciklama: ac, sipId: sip ? sip.id : '', sipNo: sip ? sip.no : '', bas: yer.bas.toISOString(), bit: yer.bit.toISOString(), sure: dakika, isaret: isr, oid: ev.oid });
+        k.gecmis.push({ tur: 'durus', id, neden: eNeden, aciklama: [ac, arE ? arizaYazi(arE) : ''].filter(Boolean).join(' · '), sipId: sip ? sip.id : '', sipNo: sip ? sip.no : '', bas: yer.bas.toISOString(), bit: yer.bit.toISOString(), sure: dakika, isaret: isr, oid: ev.oid });
         if (sip) sip.bitenDurusDk = (sip.bitenDurusDk || 0) + dakika;
         return bitti('Duruş eklendi · ' + dakika + ' dk');
       }
@@ -2090,10 +2167,12 @@ body.tv .mola-bant { font-size: 20px; }
         sip = k.siparis;
       }
       hata('eHata', '');
+      if (eNeden === 'ARIZA' && !arizaHazir) return arizaFormAc(bas, bit, 'ekEkle', () => onaylaTekrar('ekEkle'));
+      const arE = eNeden === 'ARIZA' ? arizaAl() : null;
       const id = yeniNo('E'), dakika = molaHaric(bas, bit);
-      const ev = olay(k, 'DE', { id, neden: eNeden, aciklama: ac, sipId: sip ? sip.id : '', sipNo: sip ? sip.no : '', bas: bas.toISOString(), t: bit.toISOString(), isaret: 'Sonradan elle girildi' },
+      const ev = olay(k, 'DE', Object.assign({ id, neden: eNeden, aciklama: ac, sipId: sip ? sip.id : '', sipNo: sip ? sip.no : '', bas: bas.toISOString(), t: bit.toISOString(), isaret: 'Sonradan elle girildi' }, arE ? { ariza: arE } : {}),
         { konu: 'Duruş sonradan girildi', aciklama: eNeden + ' ' + bv + '–' + tv + (sip ? ' (sipariş ' + sip.no + ' içinde)' : '') });
-      k.gecmis.push({ tur: 'durus', id, neden: eNeden, aciklama: ac, sipId: sip ? sip.id : '', sipNo: sip ? sip.no : '', bas: bas.toISOString(), bit: bit.toISOString(), sure: dakika, isaret: 'Sonradan elle girildi', oid: ev.oid });
+      k.gecmis.push({ tur: 'durus', id, neden: eNeden, aciklama: [ac, arE ? arizaYazi(arE) : ''].filter(Boolean).join(' · '), sipId: sip ? sip.id : '', sipNo: sip ? sip.no : '', bas: bas.toISOString(), bit: bit.toISOString(), sure: dakika, isaret: 'Sonradan elle girildi', oid: ev.oid });
       if (sip) sip.bitenDurusDk = (sip.bitenDurusDk || 0) + dakika;
       return bitti('Duruş eklendi · ' + bv + '–' + tv);
     }
