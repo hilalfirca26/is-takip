@@ -547,12 +547,13 @@ body.tv .mola-bant { font-size: 20px; }
     <div><h1>Arıza bitti</h1><p class="sub" id="arAlt"></p></div>
     <span class="etiket" id="arTurEt">Ne arızasıydı?<i>*</i></span>
     <div class="nedenler" id="arTur" role="group" aria-labelledby="arTurEt"></div>
-    <div class="alan"><label for="arDetay" id="arDetayEt">Arıza detayı</label><input id="arDetay" autocomplete="off"></div>
+    <div class="alan"><label for="arDetay" id="arDetayEt">Arıza detayı<i>*</i></label><input id="arDetay" autocomplete="off" placeholder="Kısaca ne oldu?"></div>
     <span class="etiket" id="arKimEt">Kim giderdi?<i>*</i></span>
     <div class="nedenler" id="arKim" role="group" aria-labelledby="arKimEt"></div>
     <span class="etiket" id="arYapEt">Ne yapıldı?<i>*</i></span>
     <div class="nedenler" id="arYap" role="group" aria-labelledby="arYapEt"></div>
     <div class="alan" id="arParcaAlan" hidden><label for="arParca">Hangi parça değişti?<i>*</i></label><input id="arParca" autocomplete="off" placeholder="Parçanın adı"></div>
+    <div class="alan"><label for="arCozum">Ne yapıldığını açıklayın<i>*</i></label><input id="arCozum" autocomplete="off" placeholder="Kısaca ne yapıldı?"></div>
     <p class="sub">Makine arıza formu (BA-FR-05) yerine geçer. Ana neden ve kalıcı çözümü bölüm sorumlusu tablodan tamamlar.</p>
     <p class="hata" id="arHata" hidden></p>
   </section>
@@ -1850,7 +1851,7 @@ body.tv .mola-bant { font-size: 20px; }
     const a = AYAR.arizaTurleri || {}, l = tornaMi() ? a.torna : a.cnc;
     return l && l.length ? l : VARSAYILAN.arizaTurleri[tornaMi() ? 'torna' : 'cnc'];
   }
-  function arizaYazi(a) { return [a.tur, a.detay, a.kim ? 'Bakım: ' + a.kim : '', a.yapilan ? a.yapilan + (a.parca ? ': ' + a.parca : '') : ''].filter(Boolean).join(' · '); }
+  function arizaYazi(a) { return [a.tur, a.detay, a.kim ? 'Bakım: ' + a.kim : '', a.yapilan ? a.yapilan + (a.parca ? ': ' + a.parca : '') : '', a.cozum].filter(Boolean).join(' · '); }
   /** Formu doldurulmuş arızayı bir kez verir (sonra temizler). */
   function arizaAl() { const a = arizaHazir; arizaHazir = null; return a; }
   /** Duruş kapanmadan önce arıza formu; kaydedilince devam() çalışır ve formu arizaAl() ile alır. */
@@ -1859,32 +1860,28 @@ body.tv .mola-bant { font-size: 20px; }
     Object.keys(arizaSecim).forEach(x => arizaSecim[x] = '');
     const dugme = (l, alan) => l.map(x => '<button type="button" class="neden" aria-pressed="false" data-alan="' + alan + '" data-deger="' + esc(x) + '">' + esc(x) + '</button>').join('');
     $('arTur').innerHTML = dugme(arizaTurListesi(), 'tur'); $('arKim').innerHTML = dugme(ARIZA_KIM, 'kim'); $('arYap').innerHTML = dugme(ARIZA_YAPILAN, 'yapilan');
-    ['arParca', 'arDetay'].forEach(i => { $(i).value = ''; $(i).classList.remove('hatali'); });
-    $('arParcaAlan').hidden = true; arizaDetayZorunlu(false);
+    ['arParca', 'arDetay', 'arCozum'].forEach(i => { $(i).value = ''; $(i).classList.remove('hatali'); });
+    $('arParcaAlan').hidden = true;
     $('arAlt').textContent = 'Arıza ' + saatYaz(bas) + '–' + saatYaz(bit) + ' · ' + molaHaric(bas, bit) + ' dk · ' + etiket();
     hata('arHata', ''); goster('ekAriza');
-  }
-  function arizaDetayZorunlu(z) {
-    $('arDetayEt').innerHTML = z ? 'Arıza detayı<i>*</i>' : 'Arıza detayı <span class="etk-not">isteğe bağlı</span>';
-    $('arDetay').placeholder = z ? 'Zorunlu: kısaca ne oldu?' : 'Kısaca ne oldu?';
   }
   ['arTur', 'arKim', 'arYap'].forEach(kap => $(kap).addEventListener('click', e => {
     const b = e.target.closest('.neden'); if (!b) return;
     $(kap).querySelectorAll('.neden').forEach(x => x.setAttribute('aria-pressed', x === b ? 'true' : 'false'));
     arizaSecim[b.dataset.alan] = b.dataset.deger; hata('arHata', '');
     if (b.dataset.alan === 'yapilan') { $('arParcaAlan').hidden = b.dataset.deger !== 'Parça değişti'; if (!$('arParcaAlan').hidden) $('arParca').focus(); }
-    if (b.dataset.alan === 'tur') arizaDetayZorunlu(b.dataset.deger === 'Diğer');
   }));
   function arizaKaydet() {
-    const s = arizaSecim, parca = $('arParca').value.trim(), detay = $('arDetay').value.trim();
-    ['arParca', 'arDetay'].forEach(i => $(i).classList.remove('hatali'));
+    const s = arizaSecim, parca = $('arParca').value.trim(), detay = $('arDetay').value.trim(), cozum = $('arCozum').value.trim();
+    ['arParca', 'arDetay', 'arCozum'].forEach(i => $(i).classList.remove('hatali'));
     if (!s.tur) return hata('arHata', 'Ne arızası olduğunu seçin.');
-    if (s.tur === 'Diğer' && !detay) { $('arDetay').classList.add('hatali'); $('arDetay').focus(); return hata('arHata', '“Diğer” seçtiniz; arızanın ne olduğunu kısaca yazın.'); }
+    if (!detay) { $('arDetay').classList.add('hatali'); $('arDetay').focus(); return hata('arHata', 'Arızanın ne olduğunu kısaca yazın.'); }
     if (!s.kim) return hata('arHata', 'Arızayı kimin giderdiğini seçin.');
     if (!s.yapilan) return hata('arHata', 'Ne yapıldığını seçin.');
     if (s.yapilan === 'Parça değişti' && !parca) { $('arParca').classList.add('hatali'); $('arParca').focus(); return hata('arHata', 'Hangi parçanın değiştiğini yazın.'); }
+    if (!cozum) { $('arCozum').classList.add('hatali'); $('arCozum').focus(); return hata('arHata', 'Ne yapıldığını kısaca yazın.'); }
     const f = arizaDevam; arizaDevam = null; if (!f) return goster('ekAna');
-    arizaHazir = { tur: s.tur, kim: s.kim, yapilan: s.yapilan, parca: s.yapilan === 'Parça değişti' ? parca : '', detay };
+    arizaHazir = { tur: s.tur, kim: s.kim, yapilan: s.yapilan, parca: s.yapilan === 'Parça değişti' ? parca : '', detay, cozum };
     f();
   }
   /** Arıza formundan sonra asıl ekranın kaydını yeniden çalıştırır (alanlar yerinde durur). */
