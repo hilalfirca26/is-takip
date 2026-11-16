@@ -251,6 +251,8 @@ body.tv .mola-bant { font-size: 20px; }
 #sAltAlan, #sMalzAlan, #sOlcu { margin-top: 8px; }
 #ekCncBas .btn-dev { min-height: 64px; font-size: 19px; }
 .nedenler.taraf { grid-template-columns: 1fr 1fr; }
+.nedenler.fazla { grid-template-columns: 1fr; }
+.nedenler.fazla .neden { min-height: 72px; font-size: 19px; }
 .nedenler.taraf .neden { min-height: 60px; font-size: 18px; font-weight: 600; }
 .uyari-not { color: var(--ink); background: var(--stop-soft); border-left: 4px solid var(--stop); border-radius: var(--r); padding: 10px 14px; margin: 0; font-size: 15px; line-height: 1.45; }
 .etk-not { font-weight: 400; color: var(--muted); font-size: 14px; margin-left: 6px; }
@@ -393,10 +395,17 @@ body.tv .mola-bant { font-size: 20px; }
   <section id="ekBaslat" hidden>
     <div><h1>Sipariş başlat</h1><p class="sub" id="bAlt"></p></div>
     <div class="iki">
-      <div class="alan"><label for="sNo">Sipariş No<i>*</i></label><input id="sNo" autocomplete="off"></div>
+      <div class="alan" id="sNoAlan"><label for="sNo">Sipariş No<i>*</i></label><input id="sNo" autocomplete="off"></div>
       <div class="alan"><label for="sAdet">Yapılacak Adet<i>*</i></label><input id="sAdet" inputmode="numeric" autocomplete="off"></div>
     </div>
     <p class="sub" id="sAdetIpucu" hidden></p>
+    <button class="link" id="sStokAc" type="button">Sipariş yok, stok için yapıyorum</button>
+    <div id="sStokAlan" hidden>
+      <span class="etiket" id="sStokEt">Stok işi · hangi ürün?<i>*</i></span>
+      <div class="nedenler" id="sStokUrun" role="group" aria-labelledby="sStokEt"></div>
+      <div class="alan" id="sStokDigerAlan" hidden><label for="sStokDiger">Ürünün adı<i>*</i></label><input id="sStokDiger" autocomplete="off" placeholder="Hangi ürünün stoğu?"></div>
+      <button class="link" id="sStokKapat" type="button">Sipariş numarası gireceğim</button>
+    </div>
     <div id="sTorna" hidden>
       <span class="etiket" id="sTipEt">Ne yapılıyor?<i>*</i></span>
       <div class="secim uclu" role="radiogroup" aria-labelledby="sTipEt">
@@ -543,6 +552,16 @@ body.tv .mola-bant { font-size: 20px; }
     <p class="hata" id="btHata" hidden></p>
   </section>
 
+  <section id="ekFazla" hidden>
+    <div><h1 id="fzBaslik">Sipariş adedinden fazla</h1><p class="sub" id="fzAlt"></p></div>
+    <p class="uyari-not" id="fzSoru"></p>
+    <div class="nedenler fazla" id="fzSecim" role="group" aria-label="Fazla adet ne oldu">
+      <button type="button" class="neden" data-k="stok" id="fzStok"></button>
+      <button type="button" class="neden" data-k="sip" id="fzSip"></button>
+      <button type="button" class="neden" data-k="yanlis">Adedi yanlış yazdım, düzelteyim</button>
+    </div>
+  </section>
+
   <section id="ekAriza" hidden>
     <div><h1>Arıza bitti</h1><p class="sub" id="arAlt"></p></div>
     <span class="etiket" id="arTurEt">Ne arızasıydı?<i>*</i></span>
@@ -677,6 +696,7 @@ body.tv .mola-bant { font-size: 20px; }
     esik: 10,
     arizaTurleri: { cnc: ['Ensör', 'Tel / kıl besleme', 'İğne / delici', 'Kıl haznesi / kesme', 'Motor / sürücü', 'Elektrik / kablo / sensör', 'Hava / vakum', 'Program / kontrol', 'Mekanik (kayış, rulman, kızak)', 'Diğer'],
       torna: ['Ayna / punta', 'Kesici takım', 'Motor', 'Elektrik', 'Mekanik', 'Diğer'] },
+    stokUrunleri: ['Kafes bant', 'Dairesel YK ek kalıp', 'Muhafazalı koltuk tabanı'],
     tornaNedenler: ['TEMİZLİK', 'AYAR', 'ARIZA', 'MALZEME BEKLEME', 'BOŞTA / SİPARİŞ YOK', 'KİŞİSEL İHTİYAÇ', 'GEÇ AÇILIŞ', 'ELEKTRİK / KOMPRESÖR', 'BAKIM', 'TOPLANTI', 'BAŞKA MAKİNEDE ÇALIŞTIM', 'DİĞER'],
     islemler: ['Çap işleme', 'Göbek işleme', 'Boylama', 'Alın tornalama', 'Mil işleme', 'Punta yeri açma', 'Kalem açma', 'Deterjan kanalı', 'Torna bağlama aparatı', 'Çakım bağlama aparatı',
       'Dairesel tornalama', 'Flanş yatağı açma', 'Taban düzeltme (balans)'].map(ad => ({ ad, tip: 'İkisi de', aciklama: false, ikiTaraf: ['Göbek işleme', 'Boylama', 'Alın tornalama', 'Mil işleme', 'Punta yeri açma'].indexOf(ad) >= 0 }))
@@ -843,7 +863,7 @@ body.tv .mola-bant { font-size: 20px; }
   function goster(ad) {
     ekran = ad;
     ['ekYukle', 'ekGiris', 'ekAna', 'ekBaslat', 'ekKapat', 'ekDurus', 'ekBitir', 'ekBosluk', 'ekEkle', 'ekNot', 'ekOzet', 'ekDuzelt', 'ekSifre', 'ekPanel', 'ekPanelGun',
-      'ekIslem', 'ekIslemBitir', 'ekCncBas', 'ekAriza'].forEach(id => $(id).hidden = id !== ad);
+      'ekIslem', 'ekIslemBitir', 'ekCncBas', 'ekAriza', 'ekFazla'].forEach(id => $(id).hidden = id !== ad);
     $('altBar').hidden = !ALT[ad];
     if (ALT[ad]) { $('altOnay').textContent = ALT[ad]; $('altOnay').className = 'btn ' + (DUR_EKRAN[ad] ? 'btn-dur' : 'btn-ana'); }
     $('kimBtn').hidden = !kimlik || ad === 'ekGiris' || ad === 'ekPanel' || ad === 'ekPanelGun';
@@ -1115,7 +1135,7 @@ body.tv .mola-bant { font-size: 20px; }
         (yazabilir() ? '<span class="islem"><button type="button" class="link" data-not="' + esc(x.id) + '">Not ekle</button></span>' : '') + '</span></li>';
       return '<li class="t-siparis"><span class="saat">' + saatYaz(x.bit) + '</span><span class="bas">■ Sipariş ' + esc(x.no) +
         (x.sonuc === 'Yarım bırakıldı' ? ' yarım bırakıldı' : ' kapandı') + (x.isaret ? ' · ' + esc(x.isaret) : '') + kimEk(x) + '</span><span class="det"><span class="mono">' + adetYazi(x) + '</span> adet' + (Number(x.kalan) > 0 ? ' · <b>kalan ' + esc(x.kalan) + '</b>' : '') +
-        (Number(x.fire) ? ' · ' + esc(x.fire) + ' fire' : '') + (x.delik !== '' && x.delik != null ? ' · ' + esc(x.delik) + ' delik' : '') +
+        (Number(x.stok) > 0 ? ' · <b>' + esc(x.stok) + ' stoğa</b>' : '') + (Number(x.fire) ? ' · ' + esc(x.fire) + ' fire' : '') + (x.delik !== '' && x.delik != null ? ' · ' + esc(x.delik) + ' delik' : '') +
         (x.siparisTip ? ' · ' + esc(tipYazi(x)) : '') +
         ' · ' + saatYaz(x.bas) + '–' + saatYaz(x.bit) + ' · ' + esc(x.brut) + ' dk' + (Number(x.durus) ? ' · ' + esc(x.durus) + ' dk duruş' : '') + bek + notlar +
         (x.islemler && x.islemler.length ? '<span class="acik">İşlemler: ' + x.islemler.map(i => esc(i.ad) + ' ' + esc(i.dk) + ' dk' + (i.adet !== '' && i.adet != null ? ' · ' + esc(i.adet) + ' ad' : '')).join(' | ') + '</span>' : '') +
@@ -1550,6 +1570,8 @@ body.tv .mola-bant { font-size: 20px; }
     $('bSureNot').textContent = sipGeri ? 'Başlangıç ' + saatYaz(sipGeri) + ' olarak kaydedilecek (kayıt yokken üretim yapıldı). Adet, fire ve delik bilgilerini işi bitirince gireceksiniz.'
       : 'Süre “Siparişi Başlat”a bastığınız anda başlar. Adet, fire ve delik bilgilerini işi bitirince gireceksiniz.';
     $('sAdetIpucu').hidden = true; sAdetOto = false;
+    stokModu(false);
+    if (devamNo && STOK_ON.test(devamNo)) { stokModu(true); stokUrunSec(devamNo.replace(STOK_ON, '')); }
     $('sTorna').hidden = !tornaMi();
     tornaFormSifirla();
     $('bSureNot').textContent = tornaMi() ? 'Süre “Siparişi Başlat”a bastığınız anda başlar. Önce ayar işaretliyse ayar sayılır; ayarı bitirince bağlama kendiliğinden başlar.' : $('bSureNot').textContent;
@@ -1582,6 +1604,33 @@ body.tv .mola-bant { font-size: 20px; }
     } else if (!onceki && sAdetOto) { $('sAdet').value = ''; sAdetOto = false; $('sAdetIpucu').hidden = true; }
   });
   $('sAdet').addEventListener('input', () => { sAdetOto = false; $('sAdetIpucu').hidden = true; });
+
+  /* ---------- Stok işi: sipariş numarası yerine stok ürünü (Sipariş No = "STOK - ürün") ---------- */
+  const STOK_ON = /^STOK - /, stokIsi = s => !!(s && (s.stok || STOK_ON.test(String(s.no || ''))));
+  let stokMod = false, stokUrun = '';
+  const stokListesi = () => { const l = AYAR.stokUrunleri && AYAR.stokUrunleri.length ? AYAR.stokUrunleri : VARSAYILAN.stokUrunleri; return l.concat(['Diğer']); };
+  function stokModu(acik) {
+    stokMod = acik; stokUrun = '';
+    $('sNoAlan').hidden = acik; $('sStokAlan').hidden = !acik; $('sStokAc').hidden = acik;
+    $('sStokUrun').innerHTML = stokListesi().map(x => '<button type="button" class="neden" aria-pressed="false" data-urun="' + esc(x) + '">' + esc(x) + '</button>').join('');
+    $('sStokDiger').value = ''; $('sStokDiger').classList.remove('hatali'); $('sStokDigerAlan').hidden = true;
+  }
+  function stokUrunSec(ad) {
+    const l = stokListesi(), u = l.indexOf(ad) >= 0 ? ad : 'Diğer';
+    stokUrun = u;
+    $('sStokUrun').querySelectorAll('.neden').forEach(b => b.setAttribute('aria-pressed', b.dataset.urun === u ? 'true' : 'false'));
+    $('sStokDigerAlan').hidden = u !== 'Diğer';
+    if (u === 'Diğer' && ad !== 'Diğer') $('sStokDiger').value = ad;
+  }
+  $('sStokAc').addEventListener('click', () => { stokModu(true); $('sNo').value = ''; hata('bHata', ''); });
+  $('sStokKapat').addEventListener('click', () => { stokModu(false); $('sNo').focus(); });
+  $('sStokUrun').addEventListener('click', e => {
+    const b = e.target.closest('.neden'); if (!b) return;
+    stokUrunSec(b.dataset.urun); hata('bHata', '');
+    // aynı stok işi yarım kaldıysa kalan adet hazır gelsin
+    $('sNo').value = b.dataset.urun === 'Diğer' ? '' : 'STOK - ' + b.dataset.urun; $('sNo').dispatchEvent(new Event('input'));
+    if (b.dataset.urun === 'Diğer') $('sStokDiger').focus(); else $('sAdet').focus();
+  });
 
   /* ---------- Sipariş kapat ---------- */
   $('bSipKapat').addEventListener('click', () => {
@@ -1628,7 +1677,8 @@ body.tv .mola-bant { font-size: 20px; }
     const s = K().siparis, a = sayi($('kpAdet').value);
     const kal = s ? kalanHesap(s.sipAdet, a) : '';
     $('kpKalan').hidden = kal === '' || a === '' || isNaN(a);
-    if (!$('kpKalan').hidden) $('kpKalan').textContent = kal > 0 ? 'Yapılacak ' + s.sipAdet + ' adet · kalan ' + kal + ' adet' : 'Yapılacak adet (' + s.sipAdet + ') tamamlandı.';
+    if (!$('kpKalan').hidden) $('kpKalan').textContent = stokIsi(s) ? 'Stok işi · sağlam adedin hepsi stoğa yazılır.' : kal > 0 ? 'Yapılacak ' + s.sipAdet + ' adet · kalan ' + kal + ' adet'
+      : a > Number(s.sipAdet) ? 'Yapılacak ' + s.sipAdet + ' adet · ' + (a - Number(s.sipAdet)) + ' adet fazla (kapatınca sorulacak)' : 'Yapılacak adet (' + s.sipAdet + ') tamamlandı.';
   }
   $('kpAdet').addEventListener('input', kalanGoster);
   $('kpBitisAc').addEventListener('click', () => { $('kpBitisAlan').hidden = false; $('kpBitisAc').hidden = true; $('kpBitis').focus(); });
@@ -1884,6 +1934,24 @@ body.tv .mola-bant { font-size: 20px; }
     arizaHazir = { tur: s.tur, kim: s.kim, yapilan: s.yapilan, parca: s.yapilan === 'Parça değişti' ? parca : '', detay, cozum };
     f();
   }
+  /* ---------- Sipariş adedinden fazla yapıldıysa (kapatırken bir kez sorulur) ---------- */
+  let fazlaKarar = null, fazlaBekleyen = null;
+  function fazlaSor(s, adet, fire, iyi, sa) {
+    fazlaBekleyen = { adet, fire, iyi, sa };
+    $('fzAlt').textContent = 'Sipariş ' + s.no + ' · ' + etiket();
+    $('fzSoru').textContent = 'Sipariş ' + sa + ' adet, ' + (fire ? 'sağlam ' + iyi + ' adet (' + adet + ' − ' + fire + ' fire)' : iyi + ' adet') + ' yazdınız. Fazla ' + (iyi - sa) + ' adet ne oldu?';
+    $('fzStok').textContent = 'Fazla ' + (iyi - sa) + ' adet stoğa yapıldı';
+    $('fzSip').textContent = 'Sipariş adedi aslında ' + iyi + ' adetti';
+    goster('ekFazla');
+  }
+  $('fzSecim').addEventListener('click', e => {
+    const b = e.target.closest('.neden'), f = fazlaBekleyen; if (!b || !f) return;
+    fazlaBekleyen = null;
+    if (b.dataset.k === 'yanlis') { goster('ekKapat'); $('kpAdet').focus(); $('kpAdet').select(); return; }
+    fazlaKarar = { adet: f.adet, fire: f.fire, stok: b.dataset.k === 'stok' ? f.iyi - f.sa : 0, sipAdet: b.dataset.k === 'sip' ? f.iyi : 0 };
+    if (b.dataset.k === 'sip') { const s = K().siparis; if (s) s.sipAdet = f.iyi; }
+    goster('ekKapat'); onayla(); fazlaKarar = null;
+  });
   /** Arıza formundan sonra asıl ekranın kaydını yeniden çalıştırır (alanlar yerinde durur). */
   function onaylaTekrar(ad) { goster(ad); onayla(); arizaHazir = null; }
 
@@ -1929,7 +1997,7 @@ body.tv .mola-bant { font-size: 20px; }
 
   /* ---------- Onay / vazgeç ---------- */
   $('altIptal').addEventListener('click', () => {
-    arizaHazir = null;
+    arizaHazir = null; fazlaKarar = null;
     if (ekran === 'ekAriza') { arizaDevam = null; if (arizaGeri === 'ekAna') { goster('ekAna'); return void ciz(); } return goster(arizaGeri); }
     if (geriOzet && (ekran === 'ekNot' || ekran === 'ekDuzelt')) { geriOzet = false; return ozetAc(ozetGun); }
     if (ekran === 'ekSifre' && sifreAmac === 'panel' && !kimlik) { girisDoldur(); return goster('ekGiris'); }
@@ -1965,8 +2033,14 @@ body.tv .mola-bant { font-size: 20px; }
     if (ekran === 'ekBaslat') {
       bAlan.forEach(id => $(id).classList.remove('hatali'));
       const isaret = (id, m) => { $(id).classList.add('hatali'); $(id).focus(); hata('bHata', m); };
-      const no = $('sNo').value.trim();
-      if (!no) return isaret('sNo', 'Sipariş numarasını yazın.');
+      let no = $('sNo').value.trim();
+      if (!stokMod && /^stok\b/i.test(no)) { stokModu(true); $('sNo').value = ''; return hata('bHata', 'Stok işi için aşağıdan ürünü seçin.'); }
+      if (stokMod) {
+        if (!stokUrun) return hata('bHata', 'Hangi ürünün stoğu için yapıldığını seçin.');
+        const u = stokUrun === 'Diğer' ? $('sStokDiger').value.trim() : stokUrun;
+        if (!u) return isaret('sStokDiger', 'Ürünün adını yazın.');
+        no = 'STOK - ' + u;
+      } else if (!no) return isaret('sNo', 'Sipariş numarasını yazın.');
       const sipAdet = sayi($('sAdet').value);
       if (sipAdet === '' || !Number.isInteger(sipAdet) || sipAdet <= 0) return isaret('sAdet', 'Yapılacak adedi yazın.');
       if (k.siparis) return hata('bHata', 'Açık bir sipariş var (' + k.siparis.no + '). Önce onu kapatın.');
@@ -1976,7 +2050,7 @@ body.tv .mola-bant { font-size: 20px; }
       if (bg && bg.hata) return hata('bHata', bg.hata);
       if (bg && bg.ayar && k.durus) return hata('bHata', 'Devam eden bir duruş var. Önce onu bitirin.');
       const geri = sipGeri, id = yeniNo('S'), t = (geri || simdi).toISOString();
-      const veri = Object.assign({ id, no, t, sipAdet }, tv || {});
+      const veri = Object.assign({ id, no, t, sipAdet }, stokMod ? { stok: true } : {}, tv || {});
       olay(k, 'SB', veri, geri ? { konu: 'Sipariş başlangıcı geriye alındı', aciklama: 'Sipariş ' + no + ' başlangıcı ' + saatYaz(geri) +
         ' olarak girildi (kayıt yokken üretim yapıldığı söylendi), butona ' + saatYaz(simdi) + ' basıldı.' + (sipGeriNot ? ' Not: ' + sipGeriNot : '') } : null);
       k.siparis = Object.assign({ bas: t, bitenDurusDk: 0, isaret: geri ? 'Başlangıç geriye alındı' : '', islemler: [] }, veri);
@@ -2016,6 +2090,13 @@ body.tv .mola-bant { font-size: 20px; }
         isaretYazi = 'Önceki günden kapatıldı';
         kontrol = { konu: 'Sipariş ertesi gün kapatıldı', aciklama: 'Sipariş ' + s.no + ' ' + new Date(s.bas).toLocaleDateString('tr-TR') + ' günü açılmış, bitiş saati düzeltilmeden kapatıldı. Süreyi kontrol edin.' };
       }
+      // Sağlam adet sipariş adedini aşıyorsa: fazlası stoğa mı, sipariş adedi mi yanlış, adet mi yanlış?
+      const iyi = adet - (fire === '' ? 0 : fire), sa = s.sipAdet === '' || s.sipAdet == null ? null : Number(s.sipAdet);
+      let fk = fazlaKarar && fazlaKarar.adet === adet && fazlaKarar.fire === fire ? fazlaKarar : null;
+      fazlaKarar = null;
+      if (!stokIsi(s) && sa != null && iyi > sa && !fk) return fazlaSor(s, adet, fire, iyi, sa);
+      const yeniSipAdet = fk && fk.sipAdet ? fk.sipAdet : s.sipAdet;
+      const stokAdet = stokIsi(s) ? Math.max(0, iyi) : fk && fk.stok ? fk.stok : '';
       hata('kpHata', '');
       isaretYazi = [s.isaret, isaretYazi].filter(Boolean).join(' · ');
       // Bitişten sonra başlayan duruşlar bu siparişe ait değil: sipariş dışına alınır (açıksa açık kalır)
@@ -2032,17 +2113,17 @@ body.tv .mola-bant { font-size: 20px; }
         return t + (b2 > a ? molaHaric(a, b2) : 0);
       }, 0));
       if (s.islem) s.siparisTip === 'Aparat' ? islemKapatYerel(k, s.islem, bitis, adet, '') : islemKapatYerel(k, s.islem, bitis, '', 'Siparişle birlikte kapatıldı');
-      const ev = olay(k, 'SK', { id: s.id, t: bitis.toISOString(), basilan: simdi.toISOString(), adet, fire: fire === '' ? 0 : fire,
+      const ev = olay(k, 'SK', Object.assign({ id: s.id, t: bitis.toISOString(), basilan: simdi.toISOString(), adet, fire: fire === '' ? 0 : fire,
         delik: cnc ? del : '', yatay: cnc ? yat : '', dikey: cnc ? dik : '',
-        sonuc: sonuc.value, not: $('kpNot').value.trim(), isaret: isaretYazi }, kontrol);
+        sonuc: sonuc.value, not: $('kpNot').value.trim(), isaret: isaretYazi }, fk ? (fk.stok ? { stok: fk.stok } : { sipAdet: fk.sipAdet }) : {}), kontrol);
       k.gecmis.push({ tur: 'siparis', id: s.id, no: s.no, bas: s.bas, bit: bitis.toISOString(), brut, durus: ds, adet, fire: fire === '' ? 0 : fire,
-        sipAdet: s.sipAdet == null ? '' : s.sipAdet, kalan: kalanHesap(s.sipAdet, adet),
+        sipAdet: yeniSipAdet == null ? '' : yeniSipAdet, kalan: kalanHesap(yeniSipAdet, adet), stok: stokAdet,
         siparisTip: s.siparisTip || '', altTip: s.altTip || '', malzeme: s.malzeme || '', gobek: s.gobek, dis: s.dis, boy: s.boy, islemler: s.islemler || [],
         sonuc: sonuc.value, isaret: isaretYazi, oid: ev.oid, delik: cnc ? del : '', yatay: cnc ? yat : '', dikey: cnc ? dik : '', notlar: (s.notlar || []).concat($('kpNot').value.trim() ? [{ t: simdi.toISOString(), metin: $('kpNot').value.trim() }] : []) });
       k.siparis = null; gsModu = false;
       // Bitiş geriye alındıysa arada kalan süreyi hemen sor
-      const kal = kalanHesap(s.sipAdet, adet);
-      return bitti('Sipariş ' + s.no + ' kapatıldı' + (kal > 0 ? ' · kalan ' + kal + ' adet' : ''), () => { if (bosluk()) boslukAc(null); });
+      const kal = kalanHesap(yeniSipAdet, adet);
+      return bitti('Sipariş ' + s.no + ' kapatıldı' + (kal > 0 ? ' · kalan ' + kal + ' adet' : '') + (Number(stokAdet) > 0 ? ' · ' + stokAdet + ' adet stoğa' : ''), () => { if (bosluk()) boslukAc(null); });
     }
     if (ekran === 'ekBitir') {
       const d = k.durus; if (!d) return goster('ekAna');
