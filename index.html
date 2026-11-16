@@ -505,6 +505,7 @@ body.tv .mola-bant { font-size: 20px; }
       <div class="alan"><label for="kpFire">Hatalı / Fire</label><input id="kpFire" inputmode="numeric" autocomplete="off" placeholder="0"></div>
     </div>
     <p class="sub kalan-yazi" id="kpKalan" hidden></p>
+    <p class="uyari-not" id="kpBolNot" hidden></p>
     <div class="uc" id="sCnc">
       <div class="alan"><label for="sDelik">Delik Sayısı<i>*</i></label><input id="sDelik" inputmode="numeric" autocomplete="off"></div>
       <div class="alan"><label for="sYatay">Yatay mesafe (mm)</label><input id="sYatay" inputmode="decimal" autocomplete="off"></div>
@@ -553,7 +554,7 @@ body.tv .mola-bant { font-size: 20px; }
   </section>
 
   <section id="ekFazla" hidden>
-    <div><h1 id="fzBaslik">Sipariş adedinden fazla</h1><p class="sub" id="fzAlt"></p></div>
+    <div><h1 id="fzBaslik"></h1><p class="sub" id="fzAlt"></p></div>
     <p class="uyari-not" id="fzSoru"></p>
     <div class="nedenler fazla" id="fzSecim" role="group" aria-label="Fazla adet ne oldu">
       <button type="button" class="neden" data-k="stok" id="fzStok"></button>
@@ -796,7 +797,7 @@ body.tv .mola-bant { font-size: 20px; }
   async function senkron() {
     if (DEMO) { if (S.kuyruk.length) { S.kuyruk = []; kaydet(); } senkGoster(); return; }
     if (senkronda) return;
-    if (!S.kuyruk.length) { senkGoster(); return; }
+    if (!S.kuyruk.length) { senkGoster(); gunEsitle(); return; }
     senkronda = true; senkGoster();
     try {
       while (S.kuyruk.length) {
@@ -826,6 +827,35 @@ body.tv .mola-bant { font-size: 20px; }
     senkronda = false;
     senkGoster();
     if (ekran === 'ekAna') listeCiz();
+    if (!S.kuyruk.length) gunEsitle();
+  }
+  /** Bugünkü kapanmış kayıtları tablodaki hâliyle eşitler (yönetici düzeltmeleri, bölünen siparişler tablete de yansır). Gönderilmeyi bekleyen kayıt varken çalışmaz. */
+  let esitSon = 0;
+  async function gunEsitle(zorla) {
+    if (DEMO || !kimlik || denemeMi(kimlik) || S.kuyruk.length || senkronda || !navigator.onLine) return;
+    if (!zorla && Date.now() - esitSon < 5 * 60000) return;
+    esitSon = Date.now();
+    const kim = kimlik, g = new Date();
+    let j = null;
+    try {
+      const ctl = new AbortController(), zam = setTimeout(() => ctl.abort(), 20000);
+      const r = await fetch(API + '?api=gun&tarih=' + gunInput(g) + '&personel=' + encodeURIComponent(kim.personel) + '&makine=' + encodeURIComponent(kim.makine || ''), { cache: 'no-store', signal: ctl.signal });
+      clearTimeout(zam); j = await r.json();
+    } catch (e) { return; }
+    if (!j || !j.ok || S.kuyruk.length || kimlik !== kim) return;
+    const k = K(); if (!k) return;
+    const notlar = t => String(t || '').split(' | ').filter(Boolean).map(m => ({ metin: m }));
+    const uzak = (j.siparisler || []).filter(x => !x.acik).map(x => Object.assign({ tur: 'siparis', notlar: notlar(x.not) }, x))
+      .concat((j.duruslar || []).filter(x => !x.acik).map(x => Object.assign({ tur: 'durus' }, x)));
+    const ALAN = { siparis: ['bas', 'bit', 'brut', 'durus', 'adet', 'fire', 'sonuc', 'sipAdet', 'kalan', 'isaret', 'stok', 'stoktan'], durus: ['bas', 'bit', 'sure', 'neden', 'sipId', 'sipNo', 'isaret'] };
+    let degisti = false;
+    uzak.forEach(x => {
+      if (k.siparis && k.siparis.id === x.id || k.durus && k.durus.id === x.id) return; // tablette hâlâ açık
+      const y = k.gecmis.find(h => h.tur === x.tur && h.id === x.id);
+      if (!y) { const z = Object.assign({}, x); delete z.not; delete z.acik; k.gecmis.push(z); degisti = true; return; }
+      ALAN[x.tur].forEach(f => { if (x[f] !== undefined && String(y[f] == null ? '' : y[f]) !== String(x[f] == null ? '' : x[f])) { y[f] = x[f]; degisti = true; } });
+    });
+    if (degisti) { kaydet(); if (ekran === 'ekAna') ciz(); }
   }
   function senkGoster() {
     const b = $('senk'), n = S.kuyruk.length;
@@ -1135,7 +1165,7 @@ body.tv .mola-bant { font-size: 20px; }
         (yazabilir() ? '<span class="islem"><button type="button" class="link" data-not="' + esc(x.id) + '">Not ekle</button></span>' : '') + '</span></li>';
       return '<li class="t-siparis"><span class="saat">' + saatYaz(x.bit) + '</span><span class="bas">■ Sipariş ' + esc(x.no) +
         (x.sonuc === 'Yarım bırakıldı' ? ' yarım bırakıldı' : ' kapandı') + (x.isaret ? ' · ' + esc(x.isaret) : '') + kimEk(x) + '</span><span class="det"><span class="mono">' + adetYazi(x) + '</span> adet' + (Number(x.kalan) > 0 ? ' · <b>kalan ' + esc(x.kalan) + '</b>' : '') +
-        (Number(x.stok) > 0 ? ' · <b>' + esc(x.stok) + ' stoğa</b>' : '') + (Number(x.fire) ? ' · ' + esc(x.fire) + ' fire' : '') + (x.delik !== '' && x.delik != null ? ' · ' + esc(x.delik) + ' delik' : '') +
+        (Number(x.stok) > 0 ? ' · <b>' + esc(x.stok) + ' stoğa</b>' : '') + (Number(x.stoktan) > 0 ? ' · <b>' + esc(x.stoktan) + ' stoktan</b>' : '') + (Number(x.fire) ? ' · ' + esc(x.fire) + ' fire' : '') + (x.delik !== '' && x.delik != null ? ' · ' + esc(x.delik) + ' delik' : '') +
         (x.siparisTip ? ' · ' + esc(tipYazi(x)) : '') +
         ' · ' + saatYaz(x.bas) + '–' + saatYaz(x.bit) + ' · ' + esc(x.brut) + ' dk' + (Number(x.durus) ? ' · ' + esc(x.durus) + ' dk duruş' : '') + bek + notlar +
         (x.islemler && x.islemler.length ? '<span class="acik">İşlemler: ' + x.islemler.map(i => esc(i.ad) + ' ' + esc(i.dk) + ' dk' + (i.adet !== '' && i.adet != null ? ' · ' + esc(i.adet) + ' ad' : '')).join(' | ') + '</span>' : '') +
@@ -1646,17 +1676,18 @@ body.tv .mola-bant { font-size: 20px; }
       if (p) { $('sDelik').value = p.delik; $('sYatay').value = p.yatay == null ? '' : p.yatay; $('sDikey').value = p.dikey == null ? '' : p.dikey; delikOnceki = true; }
     }
     const dun = gunAnahtar(s.bas) !== gunAnahtar(Date.now());
-    const uzun = dun || gecen(s.bas) > 10 * 3600000;
+    sipBol = dun ? bolumTespit(K(), s) : null;
+    const uzun = !sipBol && (dun || gecen(s.bas) > 10 * 3600000);
     $('kpBitisAlan').hidden = !uzun; $('kpBitisAc').hidden = uzun;
-    if (dun) { // Unutulmuş sipariş: bitiş o günün gün sonu (temizlik başı) olarak hazır gelir
+    if (dun && !sipBol) { // Unutulmuş sipariş: bitiş o günün gün sonu (temizlik başı) olarak hazır gelir
       let gs = gunSonuBas(s.bas); if (!(gs > new Date(s.bas))) gs = saatte(s.bas, vd().bitis);
       if (gs > new Date(s.bas)) $('kpBitis').value = saatYaz(gs);
     }
-    $('kpBitisIpucu').textContent = dun ? 'Sipariş ' + new Date(s.bas).toLocaleDateString('tr-TR') + ' günü başlamış. Bitiş o günün mesai sonu olarak dolduruldu; iş daha önce bittiyse düzeltin.'
+    $('kpBitisIpucu').textContent = sipBol ? 'Bitiş şu an kabul edilir. Bugün daha önce bittiyse saati düzeltin.' : dun ? 'Sipariş ' + new Date(s.bas).toLocaleDateString('tr-TR') + ' günü başlamış. Bitiş o günün mesai sonu olarak dolduruldu; iş daha önce bittiyse düzeltin.'
       : (uzun ? 'Sipariş 10 saatten uzun süredir açık. İş daha önce bittiyse gerçek saati yazın; şimdi bittiyse boş bırakın.' : 'Boş bırakırsanız bitiş şu an kabul edilir.');
     document.querySelectorAll('input[name="kpSonuc"]').forEach(r => r.checked = false);
     $('kpBaslik').textContent = 'Sipariş ' + s.no;
-    $('kpAlt').textContent = saatYaz(s.bas) + ' başladı · şimdi kapatılıyor' + (s.sipAdet ? ' · yapılacak ' + s.sipAdet + ' adet' : '') +
+    $('kpAlt').textContent = (sipBol ? 'Önceki günden devam · bugün ' + saatYaz(sipBol.bas) + ' itibarıyla' : saatYaz(s.bas) + ' başladı') + ' · şimdi kapatılıyor' + (s.sipAdet ? ' · yapılacak ' + s.sipAdet + ' adet' : '') +
       (delikOnceki ? ' · delik bilgileri önceki kapanıştan dolduruldu, değiştiyse düzeltin' : '');
     const sonIs = (s.islemler || []).slice(-1)[0], bek = tornaMi() ? bekleyenTaraf(s) : [];
     if (sonIs && sonIs.adet !== '' && sonIs.adet != null) $('kpAdet').value = sonIs.adet;
@@ -1669,9 +1700,24 @@ body.tv .mola-bant { font-size: 20px; }
         '<br>Öbür tarafı işlenmeyen parça bitmiş sayılmaz. Biten adede sadece iki tarafı da işlenenleri yazın; sipariş yarım kalır, devam ederken öbür taraf hazır gelir.';
     }
     kalanGoster();
+    $('kpBolNot').hidden = !sipBol;
+    if (sipBol) $('kpBolNot').textContent = 'Bu sipariş ' + new Date(s.bas).toLocaleDateString('tr-TR', { weekday: 'long' }) + ' saat ' + saatYaz(s.bas) + ' başlangıçlı, bugün saat ' + saatYaz(sipBol.bas) +
+      ' itibarıyla devam ediliyor. Önceki günkü kısım mesai sonunda (' + saatYaz(sipBol.eskiBit) + ') “yarım” olarak kapanır, bugünkü kısım ayrı kaydedilir. Biten adede tamamlanan parçaların hepsini yazın.';
     hata('kpHata', ''); kapatOzet(); goster('ekKapat'); $('kpAdet').focus();
     $('bMesai').hidden = true; if (gsModu) gunSonuUygula();
   });
+  /** Önceki günden açık kalan siparişe bugün bağlama / duruş girildiyse: ikiye bölünür (eski gün yarım, bugün ayrı kayıt). */
+  let sipBol = null;
+  function bolumTespit(k, s) {
+    const bugun = gunAnahtar(Date.now()), l = [];
+    (s.islemler || []).concat(s.islem ? [s.islem] : []).forEach(i => { if (i.bas && gunAnahtar(i.bas) === bugun) l.push(new Date(i.bas)); });
+    k.gecmis.concat(k.durus ? [k.durus] : []).forEach(g => { if (g.tur !== 'siparis' && g.sipId === s.id && g.bas && gunAnahtar(g.bas) === bugun) l.push(new Date(g.bas)); });
+    if (!l.length) return null;
+    const bas = new Date(Math.min.apply(null, l.map(Number)));
+    let eskiBit = gunSonuBas(s.bas); if (!(eskiBit > new Date(s.bas))) eskiBit = saatte(s.bas, vd().bitis);
+    if (!(eskiBit > new Date(s.bas)) || eskiBit > bas) return null;
+    return { bas, eskiBit };
+  }
   /** Kapatırken: yazılan üretim adedine göre kalan adet. */
   function kalanGoster() {
     const s = K().siparis, a = sayi($('kpAdet').value);
@@ -1685,7 +1731,8 @@ body.tv .mola-bant { font-size: 20px; }
   function kapatOzet() {
     const k = K(), s = k.siparis; if (!s) return;
     const bv = $('kpBitisAlan').hidden ? '' : $('kpBitis').value, son = bv ? saatte(s.bas, bv) : new Date();
-    const brut = son > new Date(s.bas) ? molaHaric(s.bas, son) : 0, ds = Math.min(brut, durusToplam(k));
+    const b0 = sipBol ? sipBol.bas : new Date(s.bas);
+    const brut = son > b0 ? molaHaric(b0, son) : 0, ds = Math.min(brut, sipBol ? k.gecmis.filter(g => g.tur === 'durus' && g.sipId === s.id && new Date(g.bas) >= b0).reduce((t, g) => t + (Number(g.sure) || 0), 0) : durusToplam(k));
     $('kpBrut').textContent = brut; $('kpDurus').textContent = ds; $('kpNet').textContent = brut - ds;
     const bagli = k.durus && k.durus.sipId === s.id;
     $('kpUyari').hidden = !bagli;
@@ -1938,16 +1985,29 @@ body.tv .mola-bant { font-size: 20px; }
   let fazlaKarar = null, fazlaBekleyen = null;
   function fazlaSor(s, adet, fire, iyi, sa) {
     fazlaBekleyen = { adet, fire, iyi, sa };
+    $('fzBaslik').textContent = 'Sipariş adedinden fazla';
     $('fzAlt').textContent = 'Sipariş ' + s.no + ' · ' + etiket();
     $('fzSoru').textContent = 'Sipariş ' + sa + ' adet, ' + (fire ? 'sağlam ' + iyi + ' adet (' + adet + ' − ' + fire + ' fire)' : iyi + ' adet') + ' yazdınız. Fazla ' + (iyi - sa) + ' adet ne oldu?';
-    $('fzStok').textContent = 'Fazla ' + (iyi - sa) + ' adet stoğa yapıldı';
-    $('fzSip').textContent = 'Sipariş adedi aslında ' + iyi + ' adetti';
+    $('fzStok').textContent = 'Fazla ' + (iyi - sa) + ' adet stoğa yapıldı'; $('fzStok').dataset.k = 'stok';
+    $('fzSip').textContent = 'Sipariş adedi aslında ' + iyi + ' adetti'; $('fzSip').dataset.k = 'sip';
+    goster('ekFazla');
+  }
+  /** "Bitti" denip sipariş adedinden az yazıldıysa: kalanı stoktan mı karşılandı, eksik mi kaldı? */
+  function eksikSor(s, adet, fire, sa) {
+    fazlaBekleyen = { adet, fire, sa, eksik: sa - adet };
+    $('fzBaslik').textContent = 'Sipariş adedinden az';
+    $('fzAlt').textContent = 'Sipariş ' + s.no + ' · ' + etiket();
+    $('fzSoru').textContent = 'Sipariş ' + sa + ' adet, ' + adet + ' adet yazdınız ve “Bitti” dediniz. Kalan ' + (sa - adet) + ' adet ne oldu?';
+    $('fzStok').textContent = 'Kalan ' + (sa - adet) + ' adet stoktan karşılandı'; $('fzStok').dataset.k = 'stoktan';
+    $('fzSip').textContent = 'Eksik kaldı, sonra yapılacak (yarım bırak)'; $('fzSip').dataset.k = 'yarim';
     goster('ekFazla');
   }
   $('fzSecim').addEventListener('click', e => {
     const b = e.target.closest('.neden'), f = fazlaBekleyen; if (!b || !f) return;
     fazlaBekleyen = null;
     if (b.dataset.k === 'yanlis') { goster('ekKapat'); $('kpAdet').focus(); $('kpAdet').select(); return; }
+    if (b.dataset.k === 'yarim') { $('kpYarim').checked = true; goster('ekKapat'); onayla(); return; }
+    if (b.dataset.k === 'stoktan') { fazlaKarar = { adet: f.adet, fire: f.fire, stoktan: f.eksik }; goster('ekKapat'); onayla(); fazlaKarar = null; return; }
     fazlaKarar = { adet: f.adet, fire: f.fire, stok: b.dataset.k === 'stok' ? f.iyi - f.sa : 0, sipAdet: b.dataset.k === 'sip' ? f.iyi : 0 };
     if (b.dataset.k === 'sip') { const s = K().siparis; if (s) s.sipAdet = f.iyi; }
     goster('ekKapat'); onayla(); fazlaKarar = null;
@@ -2086,7 +2146,7 @@ body.tv .mola-bant { font-size: 20px; }
         if (!(bitis > new Date(s.bas)) || bitis > simdi) return isaret('kpBitis', 'Bitiş saati, başlangıçtan (' + saatYaz(s.bas) + ') sonra ve şu andan önce olmalı.');
         isaretYazi = 'Bitiş düzeltildi';
         kontrol = { konu: 'Sipariş bitişi düzeltildi', aciklama: 'Sipariş ' + s.no + ': bitiş ' + bs + ' olarak girildi, butona ' + saatYaz(simdi) + ' basıldı.' };
-      } else if (gunAnahtar(s.bas) !== gunAnahtar(simdi)) {
+      } else if (gunAnahtar(s.bas) !== gunAnahtar(simdi) && !sipBol) {
         isaretYazi = 'Önceki günden kapatıldı';
         kontrol = { konu: 'Sipariş ertesi gün kapatıldı', aciklama: 'Sipariş ' + s.no + ' ' + new Date(s.bas).toLocaleDateString('tr-TR') + ' günü açılmış, bitiş saati düzeltilmeden kapatıldı. Süreyi kontrol edin.' };
       }
@@ -2095,6 +2155,8 @@ body.tv .mola-bant { font-size: 20px; }
       let fk = fazlaKarar && fazlaKarar.adet === adet && fazlaKarar.fire === fire ? fazlaKarar : null;
       fazlaKarar = null;
       if (!stokIsi(s) && sa != null && iyi > sa && !fk) return fazlaSor(s, adet, fire, iyi, sa);
+      if (!stokIsi(s) && sa != null && adet < sa && sonuc.value === 'Tamamlandı' && !fk) return eksikSor(s, adet, fire, sa);
+      const stoktan = fk && fk.stoktan ? fk.stoktan : '';
       const yeniSipAdet = fk && fk.sipAdet ? fk.sipAdet : s.sipAdet;
       const stokAdet = stokIsi(s) ? Math.max(0, iyi) : fk && fk.stok ? fk.stok : '';
       hata('kpHata', '');
@@ -2107,23 +2169,35 @@ body.tv .mola-bant { font-size: 20px; }
       k.gecmis.forEach(g => {
         if (g.tur === 'durus' && g.sipId === s.id && new Date(g.bas) >= bitis) { g.sipId = ''; g.sipNo = ''; g.isaret = [g.isaret, AYRILDI].filter(Boolean).join(' · '); }
       });
-      const brut = molaHaric(s.bas, bitis);
+      const bol = sipBol && bitis > sipBol.bas ? Object.assign({ id: yeniNo('S') }, sipBol) : null, b0 = bol ? bol.bas : new Date(s.bas);
+      const brut = molaHaric(b0, bitis);
       const ds = Math.min(brut, k.gecmis.filter(g => g.tur === 'durus' && g.sipId === s.id).reduce((t, g) => {
-        const a = Math.max(new Date(g.bas).getTime(), new Date(s.bas).getTime()), b2 = Math.min(new Date(g.bit).getTime(), bitis.getTime());
+        const a = Math.max(new Date(g.bas).getTime(), b0.getTime()), b2 = Math.min(new Date(g.bit).getTime(), bitis.getTime());
         return t + (b2 > a ? molaHaric(a, b2) : 0);
       }, 0));
       if (s.islem) s.siparisTip === 'Aparat' ? islemKapatYerel(k, s.islem, bitis, adet, '') : islemKapatYerel(k, s.islem, bitis, '', 'Siparişle birlikte kapatıldı');
       const ev = olay(k, 'SK', Object.assign({ id: s.id, t: bitis.toISOString(), basilan: simdi.toISOString(), adet, fire: fire === '' ? 0 : fire,
         delik: cnc ? del : '', yatay: cnc ? yat : '', dikey: cnc ? dik : '',
-        sonuc: sonuc.value, not: $('kpNot').value.trim(), isaret: isaretYazi }, fk ? (fk.stok ? { stok: fk.stok } : { sipAdet: fk.sipAdet }) : {}), kontrol);
-      k.gecmis.push({ tur: 'siparis', id: s.id, no: s.no, bas: s.bas, bit: bitis.toISOString(), brut, durus: ds, adet, fire: fire === '' ? 0 : fire,
-        sipAdet: yeniSipAdet == null ? '' : yeniSipAdet, kalan: kalanHesap(yeniSipAdet, adet), stok: stokAdet,
+        sonuc: sonuc.value, not: $('kpNot').value.trim(), isaret: isaretYazi }, fk ? (fk.stoktan ? { stoktan: fk.stoktan } : fk.stok ? { stok: fk.stok } : { sipAdet: fk.sipAdet }) : {},
+        bol ? { bol: { id: bol.id, bas: bol.bas.toISOString(), eskiBit: bol.eskiBit.toISOString() } } : {}), kontrol);
+      if (bol) { // yerelde de ikiye böl: eski gün kısmı yarım, bugünkü bağlama ve duruşlar yeni kayda
+        const eskiIsl = (s.islemler || []).filter(i => !(i.bas && new Date(i.bas) >= bol.bas));
+        k.gecmis.push({ tur: 'siparis', id: s.id, no: s.no, bas: s.bas, bit: bol.eskiBit.toISOString(), brut: molaHaric(s.bas, bol.eskiBit), durus: 0, adet: 0, fire: 0,
+          sipAdet: s.sipAdet == null ? '' : s.sipAdet, kalan: s.sipAdet == null ? '' : s.sipAdet, siparisTip: s.siparisTip || '', altTip: s.altTip || '', malzeme: s.malzeme || '',
+          gobek: s.gobek, dis: s.dis, boy: s.boy, islemler: eskiIsl, sonuc: 'Yarım bırakıldı', isaret: 'Ertesi gün devam edildi (bölündü)', oid: ev.oid, notlar: [] });
+        k.gecmis.forEach(g => { if (g.tur === 'durus' && g.sipId === s.id && new Date(g.bas) >= bol.bas) g.sipId = bol.id; });
+        s.islemler = (s.islemler || []).filter(i => eskiIsl.indexOf(i) < 0);
+        isaretYazi = [isaretYazi, 'Önceki günden devam'].filter(Boolean).join(' · ');
+      }
+      k.gecmis.push({ tur: 'siparis', id: bol ? bol.id : s.id, no: s.no, bas: bol ? bol.bas.toISOString() : s.bas, bit: bitis.toISOString(), brut, durus: ds, adet, fire: fire === '' ? 0 : fire,
+        sipAdet: yeniSipAdet == null ? '' : yeniSipAdet, kalan: kalanHesap(yeniSipAdet, adet + (Number(stoktan) || 0)), stok: stokAdet, stoktan,
         siparisTip: s.siparisTip || '', altTip: s.altTip || '', malzeme: s.malzeme || '', gobek: s.gobek, dis: s.dis, boy: s.boy, islemler: s.islemler || [],
         sonuc: sonuc.value, isaret: isaretYazi, oid: ev.oid, delik: cnc ? del : '', yatay: cnc ? yat : '', dikey: cnc ? dik : '', notlar: (s.notlar || []).concat($('kpNot').value.trim() ? [{ t: simdi.toISOString(), metin: $('kpNot').value.trim() }] : []) });
       k.siparis = null; gsModu = false;
       // Bitiş geriye alındıysa arada kalan süreyi hemen sor
-      const kal = kalanHesap(yeniSipAdet, adet);
-      return bitti('Sipariş ' + s.no + ' kapatıldı' + (kal > 0 ? ' · kalan ' + kal + ' adet' : '') + (Number(stokAdet) > 0 ? ' · ' + stokAdet + ' adet stoğa' : ''), () => { if (bosluk()) boslukAc(null); });
+      const kal = kalanHesap(yeniSipAdet, adet + (Number(stoktan) || 0));
+      sipBol = null;
+      return bitti('Sipariş ' + s.no + ' kapatıldı' + (bol ? ' · önceki gün kısmı ayrı kaydedildi' : '') + (kal > 0 ? ' · kalan ' + kal + ' adet' : '') + (Number(stokAdet) > 0 ? ' · ' + stokAdet + ' adet stoğa' : '') + (stoktan ? ' · ' + stoktan + ' adet stoktan' : ''), () => { if (bosluk()) boslukAc(null); });
     }
     if (ekran === 'ekBitir') {
       const d = k.durus; if (!d) return goster('ekAna');
