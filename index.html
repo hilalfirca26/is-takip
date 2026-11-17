@@ -396,7 +396,7 @@ body.tv .mola-bant { font-size: 20px; }
     <div><h1>Sipariş başlat</h1><p class="sub" id="bAlt"></p></div>
     <div class="iki">
       <div class="alan" id="sNoAlan"><label for="sNo">Sipariş No<i>*</i></label><input id="sNo" autocomplete="off"></div>
-      <div class="alan"><label for="sAdet">Yapılacak Adet<i>*</i></label><input id="sAdet" inputmode="numeric" autocomplete="off"></div>
+      <div class="alan"><label for="sAdet" id="sAdetEt">Yapılacak Adet<i>*</i></label><input id="sAdet" inputmode="numeric" autocomplete="off"></div>
     </div>
     <p class="sub" id="sAdetIpucu" hidden></p>
     <button class="link" id="sStokAc" type="button">Sipariş yok, stok için yapıyorum</button>
@@ -1642,6 +1642,7 @@ body.tv .mola-bant { font-size: 20px; }
   function stokModu(acik) {
     stokMod = acik; stokUrun = '';
     $('sNoAlan').hidden = acik; $('sStokAlan').hidden = !acik; $('sStokAc').hidden = acik;
+    $('sAdetEt').innerHTML = acik ? 'Kaç adet yapılacak <span class="sub">(belliyse)</span>' : 'Yapılacak Adet<i>*</i>';
     $('sStokUrun').innerHTML = stokListesi().map(x => '<button type="button" class="neden" aria-pressed="false" data-urun="' + esc(x) + '">' + esc(x) + '</button>').join('');
     $('sStokDiger').value = ''; $('sStokDiger').classList.remove('hatali'); $('sStokDigerAlan').hidden = true;
   }
@@ -1722,7 +1723,7 @@ body.tv .mola-bant { font-size: 20px; }
   function kalanGoster() {
     const s = K().siparis, a = sayi($('kpAdet').value);
     const kal = s ? kalanHesap(s.sipAdet, a) : '';
-    $('kpKalan').hidden = kal === '' || a === '' || isNaN(a);
+    $('kpKalan').hidden = a === '' || isNaN(a) || (kal === '' && !stokIsi(s));
     if (!$('kpKalan').hidden) $('kpKalan').textContent = stokIsi(s) ? 'Stok işi · sağlam adedin hepsi stoğa yazılır.' : kal > 0 ? 'Yapılacak ' + s.sipAdet + ' adet · kalan ' + kal + ' adet'
       : a > Number(s.sipAdet) ? 'Yapılacak ' + s.sipAdet + ' adet · ' + (a - Number(s.sipAdet)) + ' adet fazla (kapatınca sorulacak)' : 'Yapılacak adet (' + s.sipAdet + ') tamamlandı.';
   }
@@ -2102,7 +2103,7 @@ body.tv .mola-bant { font-size: 20px; }
         no = 'STOK - ' + u;
       } else if (!no) return isaret('sNo', 'Sipariş numarasını yazın.');
       const sipAdet = sayi($('sAdet').value);
-      if (sipAdet === '' || !Number.isInteger(sipAdet) || sipAdet <= 0) return isaret('sAdet', 'Yapılacak adedi yazın.');
+      if (!(stokMod && sipAdet === '') && (sipAdet === '' || !Number.isInteger(sipAdet) || sipAdet <= 0)) return isaret('sAdet', stokMod ? 'Adet tam sayı olmalı ya da boş bırakın.' : 'Yapılacak adedi yazın.');
       if (k.siparis) return hata('bHata', 'Açık bir sipariş var (' + k.siparis.no + '). Önce onu kapatın.');
       const tv = tornaMi() ? tornaOlcuOku() : null;
       if (tv && tv.hata) return tv.alan ? isaret(tv.alan, tv.hata) : hata('bHata', tv.hata);
